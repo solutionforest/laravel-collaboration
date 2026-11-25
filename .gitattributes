@@ -1,0 +1,21 @@
+* text=auto eol=lf
+
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+/.github export-ignore
+/demo export-ignore
+/docs export-ignore
+/website export-ignore
+/tests export-ignore
+/resources/js export-ignore
+/resources/css export-ignore
+/scripts export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/vite.config.js export-ignore
+CHANGELOG.md export-ignore
+.styleci.yml export-ignore

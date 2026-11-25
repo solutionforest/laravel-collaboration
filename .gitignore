@@ -1,0 +1,13 @@
+/vendor
+/node_modules
+.phpunit.result.cache
+.phpunit.cache
+composer.lock
+/demo/vendor
+/demo/node_modules
+/demo/.env
+/demo/public/build
+/demo/public/hot
+/demo/database/*.sqlite
+/demo/storage/*.key
+/demo/test-results
