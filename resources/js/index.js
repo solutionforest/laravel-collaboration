@@ -1,0 +1,9 @@
+/**
+ * The framework-free client. Most apps use an adapter instead:
+ * `/livewire`, `/react`, `/vue` and `/tiptap`.
+ */
+export { Room } from './core/room.js'
+export { HttpTransport, SyncError } from './core/transport.js'
+export { bindTextField } from './bindings/text-field.js'
+export { bindValueField } from './bindings/value-field.js'
+export { renderAvatars, describe } from './ui/avatars.js'

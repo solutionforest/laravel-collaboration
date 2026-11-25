@@ -1,0 +1,653 @@
+[
+ {
+  "html": "<h2>Title</h2><p>Hello <strong>bold</strong> and <a href=\"https://example.com\">a link</a></p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Title"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Hello "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "bold"
+      },
+      {
+       "type": "text",
+       "text": " and "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://example.com"
+         }
+        }
+       ],
+       "text": "a link"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<ul><li>One</li><li>Two</li></ul>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "One"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Two"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<ol><li data-list=\"bullet\"><span class=\"ql-ui\" contenteditable=\"false\"></span>One</li><li data-list=\"bullet\">Two</li></ol>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "One"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Two"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<ol><li>First <em>item</em></li><li><s>Second</s></li></ol>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "orderedList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "First "
+          },
+          {
+           "type": "text",
+           "marks": [
+            {
+             "type": "italic"
+            }
+           ],
+           "text": "item"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "marks": [
+            {
+             "type": "strike"
+            }
+           ],
+           "text": "Second"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<div><ul><li>One</li></ul></div><div>Trix line<br>two<br></div><div><br></div>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "One"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Trix line"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "two"
+      }
+     ]
+    },
+    {
+     "type": "paragraph"
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p><br></p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph"
+    }
+   ]
+  }
+ },
+ {
+  "html": "<blockquote>Quoted</blockquote><blockquote><p>Quoted</p></blockquote>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "blockquote",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Quoted"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "blockquote",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Quoted"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p>a&nbsp; b</p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "a  b"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "\n<p>One</p>\n<p>Two</p>\n",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "One"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Two"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p>Line<br>break</p><p>Ends with a break<br><br></p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Line"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "break"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Ends with a break"
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<h3>Heading</h3><hr><pre>code\n  indented</pre>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 3
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Heading"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "codeBlock",
+     "content": [
+      {
+       "type": "text",
+       "text": "code\n  indented"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<table><tbody><tr><th>Head</th></tr><tr><td>Cell</td></tr></tbody></table>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "table",
+     "content": [
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableHeader",
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "Head"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "Cell"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p>An image <img src=\"https://example.com/a.png\" alt=\"A\"> inline</p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "An image "
+      },
+      {
+       "attrs": {
+        "alt": "A",
+        "src": "https://example.com/a.png"
+       },
+       "type": "image"
+      },
+      {
+       "type": "text",
+       "text": " inline"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p onclick=\"x()\">Hi <script>alert(1)</script><span style=\"color:red\">there</span> <a href=\"javascript:alert(1)\">link</a></p><custom-block>Inside</custom-block>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Hi there "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link"
+        }
+       ],
+       "text": "link"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Inside"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<p>Mixed <strong><em>both</em></strong> <u>under</u> <code>code</code> <sub>2</sub><sup>3</sup></p>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Mixed "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        },
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "both"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "underline"
+        }
+       ],
+       "text": "under"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ],
+       "text": "code"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "subscript"
+        }
+       ],
+       "text": "2"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "superscript"
+        }
+       ],
+       "text": "3"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "<figure><img src=\"https://example.com/b.png\"><figcaption>Caption</figcaption></figure>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "attrs": {
+        "src": "https://example.com/b.png"
+       },
+       "type": "image"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Caption"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "html": "",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph"
+    }
+   ]
+  }
+ },
+ {
+  "html": "Loose text <b>bold</b>",
+  "document": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Loose text "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "bold"
+      }
+     ]
+    }
+   ]
+  }
+ }
+]
