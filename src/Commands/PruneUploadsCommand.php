@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SolutionForest\Collaboration\Commands;
 
 use Illuminate\Console\Command;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Documents\SharedUploads;
 
 class PruneUploadsCommand extends Command
@@ -15,7 +16,7 @@ class PruneUploadsCommand extends Command
 
     public function handle(SharedUploads $uploads): int
     {
-        $hours = $this->option('hours') ?? config('collaboration.prune_uploads_after');
+        $hours = $this->option('hours') ?? Collaboration::config('prune_uploads_after');
         $deleted = $uploads->prune((int) round(max(0, is_numeric($hours) ? (float) $hours : 24) * 3600));
 
         $this->components->info("Deleted {$deleted} unused ".str('image')->plural($deleted).'.');

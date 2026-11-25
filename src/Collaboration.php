@@ -47,6 +47,9 @@ final class Collaboration
     /** @var (Closure(): ?Authenticatable)|null */
     public static ?Closure $userResolver = null;
 
+    /** @var (Closure(string, mixed): mixed)|null */
+    public static ?Closure $configResolver = null;
+
     /** @var (Closure(Authenticatable): ?string)|null */
     public static ?Closure $userNameResolver = null;
 
@@ -107,6 +110,22 @@ final class Collaboration
     public static function ignoreRoutes(): void
     {
         self::$registersRoutes = false;
+    }
+
+    /**
+     * Where deployment settings come from, when not `config/collaboration.php`.
+     *
+     * @param  Closure(string $key, mixed $default): mixed  $callback
+     */
+    public static function readConfigUsing(Closure $callback): void
+    {
+        self::$configResolver = $callback;
+    }
+
+    /** A deployment setting, such as `cache_store`. */
+    public static function config(string $key, mixed $default = null): mixed
+    {
+        return self::$configResolver === null ? config("collaboration.{$key}", $default) : (self::$configResolver)($key, $default);
     }
 
     /** Keep your own tables, for example after publishing and changing the migration. */
@@ -201,6 +220,7 @@ final class Collaboration
         self::$registersRoutes = true;
         self::$runsMigrations = true;
         self::$userResolver = null;
+        self::$configResolver = null;
         self::$colors = Palette::DEFAULT;
         self::$userNameResolver = null;
         self::$userAvatarResolver = null;

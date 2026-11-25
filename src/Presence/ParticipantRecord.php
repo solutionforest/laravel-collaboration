@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SolutionForest\Collaboration\Presence;
 
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Enums\PresenceChange;
 use SolutionForest\Collaboration\Enums\PresenceMode;
 use SolutionForest\Collaboration\Support\Data;
@@ -70,7 +71,7 @@ final class ParticipantRecord
 
     public static function timeout(): int
     {
-        return max(8, Data::int(config('collaboration.presence_timeout'), 20));
+        return max(8, Data::int(Collaboration::config('presence_timeout'), 20));
     }
 
     /**

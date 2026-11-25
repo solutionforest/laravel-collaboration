@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use SolutionForest\Collaboration\Broadcasting\RoomNotifier;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Comments\RecordComments;
 use SolutionForest\Collaboration\Contracts\PresenceRepository;
 use SolutionForest\Collaboration\Documents\DraftHeads;
@@ -185,6 +186,6 @@ final readonly class DeletedRecords
 
     private static function cache(): Repository
     {
-        return Cache::store(Data::nullableString(config('collaboration.cache_store')));
+        return Cache::store(Data::nullableString(Collaboration::config('cache_store')));
     }
 }

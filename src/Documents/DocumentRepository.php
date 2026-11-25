@@ -7,6 +7,7 @@ namespace SolutionForest\Collaboration\Documents;
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use SolutionForest\Collaboration\Broadcasting\RoomNotifier;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Contracts\PresenceRepository;
 use SolutionForest\Collaboration\Crdt\Document;
 use SolutionForest\Collaboration\Crdt\InvalidOperation;
@@ -446,7 +447,7 @@ final class DocumentRepository
         }
 
         // A language's draft: people are present in the record's room, not the draft's.
-        if ($this->presence->hasRecentEditors($draft->parentRoom ?? $room, Data::int(config('collaboration.compact_after'), 1800))) {
+        if ($this->presence->hasRecentEditors($draft->parentRoom ?? $room, Data::int(Collaboration::config('compact_after'), 1800))) {
             return;
         }
 

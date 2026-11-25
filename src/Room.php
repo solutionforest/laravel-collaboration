@@ -375,7 +375,7 @@ final class Room implements Arrayable, JsonSerializable
             visible: array_keys($this->fields),
             model: $this->record::class,
             key: Data::string($this->record->getKey()),
-            expiresAt: now()->getTimestamp() + max(1, Data::int(config('collaboration.token_lifetime'), 900)),
+            expiresAt: now()->getTimestamp() + max(1, Data::int(Collaboration::config('token_lifetime'), 900)),
             allowed: array_intersect_key($this->allowed, $live),
             permissions: Permissions::version($this->id()),
             locale: $this->locale,

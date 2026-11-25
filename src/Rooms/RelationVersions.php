@@ -7,6 +7,7 @@ namespace SolutionForest\Collaboration\Rooms;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use SolutionForest\Collaboration\Broadcasting\RoomNotifier;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Support\Data;
 
 /**
@@ -40,6 +41,6 @@ final class RelationVersions
 
     private static function cache(): Repository
     {
-        return Cache::store(Data::nullableString(config('collaboration.cache_store')));
+        return Cache::store(Data::nullableString(Collaboration::config('cache_store')));
     }
 }

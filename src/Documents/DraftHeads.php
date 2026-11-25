@@ -9,6 +9,7 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Support\Data;
 use SolutionForest\Collaboration\Support\Database;
 
@@ -87,13 +88,13 @@ final class DraftHeads
 
     public static function enabled(): bool
     {
-        $setting = config('collaboration.draft_cache');
+        $setting = Collaboration::config('draft_cache');
 
         if ($setting !== null && $setting !== '') {
             return filter_var($setting, FILTER_VALIDATE_BOOLEAN);
         }
 
-        $store = Data::nullableString(config('collaboration.cache_store')) ?? Data::nullableString(config('cache.default'));
+        $store = Data::nullableString(Collaboration::config('cache_store')) ?? Data::nullableString(config('cache.default'));
         $driver = $store === null ? null : config("cache.stores.{$store}.driver");
 
         return in_array($driver, ['redis', 'memcached'], true);
@@ -101,6 +102,6 @@ final class DraftHeads
 
     private static function cache(): Repository
     {
-        return Cache::store(Data::nullableString(config('collaboration.cache_store')));
+        return Cache::store(Data::nullableString(Collaboration::config('cache_store')));
     }
 }

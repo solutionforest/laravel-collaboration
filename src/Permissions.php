@@ -73,6 +73,6 @@ final class Permissions
 
     private static function cache(): Repository
     {
-        return Cache::store(Data::nullableString(config('collaboration.cache_store')));
+        return Cache::store(Data::nullableString(Collaboration::config('cache_store')));
     }
 }

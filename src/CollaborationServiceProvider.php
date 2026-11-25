@@ -31,7 +31,7 @@ final class CollaborationServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/collaboration.php', 'collaboration');
 
-        $this->app->bindIf(PresenceRepository::class, static fn (): PresenceRepository => config('collaboration.presence') === 'redis'
+        $this->app->bindIf(PresenceRepository::class, static fn (): PresenceRepository => Collaboration::config('presence') === 'redis'
             ? new RedisPresenceRepository
             : new DatabasePresenceRepository);
 
@@ -69,7 +69,7 @@ final class CollaborationServiceProvider extends ServiceProvider
     private function registerRoutes(): void
     {
         RateLimiter::for('collaboration', static function (Request $request): Limit {
-            $limit = max(60, Data::int(config('collaboration.rate_limit'), 2400));
+            $limit = max(60, Data::int(Collaboration::config('rate_limit'), 2400));
 
             return Limit::perMinute($limit)->by(Data::string($request->user()?->getAuthIdentifier(), (string) $request->ip()));
         });
@@ -151,7 +151,7 @@ final class CollaborationServiceProvider extends ServiceProvider
 
         // Images inserted into drafts that were never saved.
         $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-            if (config('collaboration.prune_uploads_after') !== null) {
+            if (Collaboration::config('prune_uploads_after') !== null) {
                 $schedule->command(PruneUploadsCommand::class)->daily()->withoutOverlapping()->onOneServer();
             }
         });

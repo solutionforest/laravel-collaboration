@@ -10,6 +10,7 @@ use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
+use SolutionForest\Collaboration\Collaboration;
 
 /**
  * Held from reading the database until the draft records what was saved, so
@@ -61,7 +62,7 @@ final class SaveLock
 
     private function lock(string $room): Lock
     {
-        $store = Cache::store(Data::nullableString(config('collaboration.cache_store')))->getStore();
+        $store = Cache::store(Data::nullableString(Collaboration::config('cache_store')))->getStore();
 
         if (! $store instanceof LockProvider) {
             throw new RuntimeException('Collaboration needs a cache store that supports atomic locks.');

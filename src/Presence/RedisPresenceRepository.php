@@ -7,6 +7,7 @@ namespace SolutionForest\Collaboration\Presence;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Facades\Redis;
 use SolutionForest\Collaboration\Broadcasting\Audience;
+use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Contracts\PresenceRepository;
 use SolutionForest\Collaboration\Enums\PresenceChange;
 use SolutionForest\Collaboration\Enums\PresenceMode;
@@ -72,7 +73,7 @@ class RedisPresenceRepository implements PresenceRepository
         }
 
         // Long enough for `hasRecentEditors()`, which keeps a busy draft from being compacted.
-        $this->forgetGone($room, $now - max($timeout * 3, Data::int(config('collaboration.compact_after'), 1800)));
+        $this->forgetGone($room, $now - max($timeout * 3, Data::int(Collaboration::config('compact_after'), 1800)));
 
         return $change;
     }
@@ -250,7 +251,7 @@ class RedisPresenceRepository implements PresenceRepository
 
     private function redis(): Connection
     {
-        return Redis::connection(Data::nullableString(config('collaboration.redis_connection')));
+        return Redis::connection(Data::nullableString(Collaboration::config('redis_connection')));
     }
 
     private static function key(string $kind, string $name): string
