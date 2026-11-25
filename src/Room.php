@@ -35,7 +35,7 @@ use SolutionForest\Collaboration\Support\SaveLock;
  *
  *     return Inertia::render('Posts/Edit', ['collaboration' => $room]);
  *
- *     $room->save($request->validated(), fn (array $values) => $post->update($values));
+ *     $room->update($request->validated());
  *
  * @implements Arrayable<string, mixed>
  */
@@ -278,6 +278,19 @@ final class Room implements Arrayable, JsonSerializable
 
             return $result;
         });
+    }
+
+    /**
+     * Updates the record with the form's values and everybody's latest edits.
+     *
+     *     $post->collaboration()->update($request->validated());
+     *
+     * @param  array<string, mixed>  $values  what the form submitted
+     * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
+     */
+    public function update(array $values, ?string $sync = null): bool
+    {
+        return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync);
     }
 
     /** The current values of the room's fields, as the shared draft holds them. */

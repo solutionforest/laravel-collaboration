@@ -62,6 +62,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm test
 
       - name: The Livewire script is built from the sources
@@ -102,3 +103,51 @@ jobs:
           php artisan serve --port=8123 > storage/logs/serve.log 2>&1 &
           sleep 3
           node tests/browser/smoke.mjs
+
+  filament:
+    name: Filament Collaboration on this core
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}
+    timeout-minutes: 25
+    # The branch of filament-collaboration that builds on this package. Set the
+    # repository variable FILAMENT_COLLABORATION_REF to `main` once it is merged.
+    env:
+      FILAMENT_REF: ${{ vars.FILAMENT_COLLABORATION_REF || 'refactor/use-laravel-collaboration-core' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+
+      - uses: actions/checkout@v4
+        with:
+          repository: solutionforest/filament-collaboration
+          ref: ${{ env.FILAMENT_REF }}
+          path: filament
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Install the demo with this checkout of the core
+        working-directory: filament/demo
+        run: |
+          php -r '
+              $file = "composer.json";
+              $json = json_decode(file_get_contents($file), true);
+              $json["repositories"] = array_values(array_filter($json["repositories"], fn ($r) => ! str_contains($r["url"], "laravel-collaboration")));
+              array_unshift($json["repositories"], ["type" => "path", "url" => "../../core", "options" => ["symlink" => true, "versions" => ["solutionforest/laravel-collaboration" => "0.1.0"]]]);
+              $json["require"]["solutionforest/laravel-collaboration"] = "0.1.0";
+              file_put_contents($file, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          '
+          composer update solutionforest/laravel-collaboration solutionforest/filament-collaboration --with-dependencies --no-interaction --no-progress
+          cp .env.example .env && php artisan key:generate --no-interaction
+
+      - name: Pest
+        working-directory: filament/demo
+        run: vendor/bin/pest
+
+      - name: PHPStan, level 10
+        working-directory: filament/demo
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G

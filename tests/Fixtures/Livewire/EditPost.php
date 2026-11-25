@@ -33,7 +33,7 @@ final class EditPost extends Component
 
     public function save(): void
     {
-        $this->saveCollaboratively(fn (array $values) => $this->post->update($values));
+        $this->saveCollaboratively();
     }
 
     public function render(): string

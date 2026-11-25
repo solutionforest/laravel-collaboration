@@ -30,7 +30,7 @@ class PostController
             'featured' => ['boolean'],
         ]);
 
-        $post->collaboration()->save($validated, fn (array $values) => $post->update($values));
+        $post->collaboration()->update($validated);
 
         return back()->with('saved', true);
     }

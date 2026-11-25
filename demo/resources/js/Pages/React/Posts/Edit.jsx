@@ -53,7 +53,7 @@ export default function Edit({ post, statuses, collaboration }) {
 
                 <div>
                     <span className="field-label">Body <FieldPeople form={form} field="body" /></span>
-                    {form.collaboration.room && <CollaborativeEditor form={form} field="body" className="editor" />}
+                    <CollaborativeEditor form={form} field="body" className="editor" />
                 </div>
             </div>
 

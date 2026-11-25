@@ -6,12 +6,30 @@
     "license": "MIT",
     "type": "module",
     "exports": {
-        ".": "./resources/js/index.js",
-        "./react": "./resources/js/react/index.js",
-        "./react/editor": "./resources/js/react/editor.js",
-        "./vue": "./resources/js/vue/index.js",
-        "./vue/editor": "./resources/js/vue/editor.js",
-        "./tiptap": "./resources/js/tiptap/index.js"
+        ".": {
+            "types": "./resources/js/index.d.ts",
+            "default": "./resources/js/index.js"
+        },
+        "./react": {
+            "types": "./resources/js/react/index.d.ts",
+            "default": "./resources/js/react/index.js"
+        },
+        "./react/editor": {
+            "types": "./resources/js/react/editor.d.ts",
+            "default": "./resources/js/react/editor.js"
+        },
+        "./vue": {
+            "types": "./resources/js/vue/index.d.ts",
+            "default": "./resources/js/vue/index.js"
+        },
+        "./vue/editor": {
+            "types": "./resources/js/vue/editor.d.ts",
+            "default": "./resources/js/vue/editor.js"
+        },
+        "./tiptap": {
+            "types": "./resources/js/tiptap/index.d.ts",
+            "default": "./resources/js/tiptap/index.js"
+        }
     },
     "files": [
         "resources/js",
@@ -21,7 +39,8 @@
         "build": "vite build",
         "lint": "eslint resources/js tests/js",
         "test": "node --test \"tests/js/*.test.js\"",
-        "check": "npm run lint && npm test"
+        "check": "npm run lint && npm run typecheck && npm test",
+        "typecheck": "tsc -p tsconfig.json"
     },
     "peerDependencies": {
         "@inertiajs/react": "^3.0",
@@ -35,24 +54,51 @@
         "vue": "^3.5"
     },
     "peerDependenciesMeta": {
-        "@inertiajs/react": { "optional": true },
-        "@inertiajs/vue3": { "optional": true },
-        "@tiptap/core": { "optional": true },
-        "@tiptap/pm": { "optional": true },
-        "@tiptap/react": { "optional": true },
-        "@tiptap/starter-kit": { "optional": true },
-        "@tiptap/vue-3": { "optional": true },
-        "react": { "optional": true },
-        "vue": { "optional": true }
+        "@inertiajs/react": {
+            "optional": true
+        },
+        "@inertiajs/vue3": {
+            "optional": true
+        },
+        "@tiptap/core": {
+            "optional": true
+        },
+        "@tiptap/pm": {
+            "optional": true
+        },
+        "@tiptap/react": {
+            "optional": true
+        },
+        "@tiptap/starter-kit": {
+            "optional": true
+        },
+        "@tiptap/vue-3": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        },
+        "vue": {
+            "optional": true
+        }
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@inertiajs/react": "^3.11.0",
+        "@inertiajs/vue3": "^3.11.0",
         "@tiptap/core": "^3.35.0",
         "@tiptap/pm": "^3.35.0",
+        "@tiptap/react": "^3.35.0",
         "@tiptap/starter-kit": "^3.35.0",
+        "@tiptap/vue-3": "^3.35.0",
+        "@types/react": "^19.3.2",
         "eslint": "^10.15.0",
         "globals": "^17.14.0",
         "jsdom": "^31.0.1",
-        "vite": "^8.0.0"
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "typescript": "^7.0.2",
+        "vite": "^8.0.0",
+        "vue": "^3.5.46"
     }
 }

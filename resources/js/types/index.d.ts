@@ -1,0 +1,130 @@
+/** What `Collaboration::room()` renders for the browser: pass it to the client as it is. */
+export interface RoomConfig {
+    id: string
+    url: string
+    csrf: string
+    token: string
+    client: number
+    mode: 'editing' | 'viewing'
+    /** The live fields and how each merges. */
+    fields: Record<string, FieldKind>
+    /** What people see for each field: "Alice is in Title". */
+    labels: Record<string, string>
+    draft: string
+    /** The input a save sends its unsynced edits in. */
+    input: string
+    interval: number
+    channel: string | null
+    avatarLimit: number
+    reportErrors: boolean
+    user: string
+    strings: Record<string, string>
+    /** Livewire only: where the fields are in the component, such as `form`. */
+    statePath?: string | null
+}
+
+export type FieldKind = 'text' | 'rich' | 'value' | 'items'
+
+export type RoomStatus = 'connecting' | 'synced' | 'syncing' | 'offline' | 'expired' | 'stopped' | 'denied' | 'deleted'
+
+/** Somebody else in the room. */
+export interface Person {
+    client: number
+    key: string
+    name: string
+    initials: string
+    avatar: string | null
+    color: string
+    mode: 'editing' | 'viewing' | 'creating' | 'browsing'
+    /** The field they are in, if you may see it. */
+    field: string | null
+    cursor: { anchor: Id | null, head: Id | null } | null
+    idle: boolean
+    /** Yourself, in another tab. */
+    self: boolean
+}
+
+/** A character's id in the shared draft: `[clock, client]`. */
+export type Id = [number, number]
+
+/** A selection, as positions in a field: characters for text, the draft's positions for rich text. */
+export interface Selection {
+    anchor: number
+    head: number
+}
+
+/** What an adapter tells the room about one field it shows. */
+export interface FieldBinding {
+    capture?(): void
+    render?(): void
+    cursor?(): Selection | null
+    readonly isBusy?: boolean
+}
+
+export interface RoomEvents {
+    ready: Room
+    change: { field: string, value: unknown }
+    people: Person[]
+    status: RoomStatus
+    saved: { name: string | null }
+    expired: Room
+    deleted: { name: string | null }
+}
+
+/** One record's room in this tab: the shared draft, the people in it, and the sync loop. */
+export class Room {
+    constructor(config: RoomConfig, options?: { transport?: { send(config: RoomConfig, payload: Record<string, unknown>, options?: { keepalive?: boolean }): Promise<any> } })
+    readonly config: RoomConfig
+    readonly status: RoomStatus
+    readonly isReady: boolean
+    readonly isLive: boolean
+    /** Everybody else here, one entry per person. */
+    readonly people: Person[]
+    isLiveField(field: string): boolean
+    value(field: string): unknown
+    label(field: string): string
+    change(field: string, value: unknown, caret?: number | null): void
+    focus(field: string | null): void
+    blur(field: string): void
+    cursorMoved(): void
+    bind(field: string, binding: FieldBinding): () => void
+    idAt(field: string, index: number): Id | null
+    indexOf(field: string, id: Id | null): number | null
+    carets(field: string): Array<{ person: Person, anchor: number, head: number }>
+    peopleIn(field: string): Person[]
+    /** What a form sends when it is saved; `Room::save()` reads it. */
+    payload(): string
+    on<E extends keyof RoomEvents>(event: E, callback: (detail: RoomEvents[E]) => void): () => void
+    renew(config: RoomConfig): void
+    destroy(): void
+}
+
+export class SyncError extends Error {
+    readonly status: number
+    readonly code: string
+    readonly body: Record<string, unknown> | null
+}
+
+export class HttpTransport {
+    send(config: RoomConfig, payload: Record<string, unknown>, options?: { keepalive?: boolean }): Promise<any>
+}
+
+type Input = HTMLInputElement | HTMLTextAreaElement
+
+/** Makes an input or textarea collaborative. Returns what makes it an ordinary input again. */
+export function bindTextField(room: Room, field: string, element: Input, options?: { onRemoteChange?: (value: string) => void }): () => void
+
+/** Makes a select, a checkbox or a group of radios collaborative. */
+export function bindValueField(room: Room, field: string, target: HTMLInputElement | HTMLSelectElement | HTMLInputElement[], options?: { onRemoteChange?: (value: unknown) => void }): () => void
+
+export function renderAvatars(people: Person[], options?: { limit?: number, strings?: Record<string, string>, labels?: Record<string, string> }): HTMLElement
+
+/** "Alice · In Title", for a tooltip. */
+export function describe(person: Person, strings?: Record<string, string>, labels?: Record<string, string>): string
+
+export function peopleIn(people: Person[], field: string): Person[]
+
+export function avatarsOf(people: Person[], limit?: number): { shown: Person[], more: number }
+
+/** An input's change event as a form value; anything else as it is. */
+export function valueOf(event: unknown): unknown

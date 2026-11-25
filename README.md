@@ -104,7 +104,7 @@ class EditPost extends Component
 
     public function save(): void
     {
-        $this->saveCollaboratively(fn (array $values) => $this->post->update($values));
+        $this->saveCollaboratively();   // updates the post with everybody's edits
     }
 }
 ```
@@ -136,7 +136,7 @@ public function edit(Post $post)
 
 public function update(Request $request, Post $post)
 {
-    $post->collaboration()->save($request->validate([...]), fn (array $values) => $post->update($values));
+    $post->collaboration()->update($request->validate([...]));
 
     return back();
 }
@@ -163,7 +163,12 @@ export default function Edit({ post, collaboration }) {
 }
 ```
 
-`useCollaborativeForm()` is Inertia's `useForm()` with collaboration added. Everything else (`errors`, `processing`, `put()`) works as usual.
+`useCollaborativeForm()` is Inertia's `useForm()` with collaboration added. Everything else works as usual: `errors`, `processing`, `put()`, and `transform()`, which runs before the live edits are added.
+
+- **Radios:** pass the value each one stands for: `<input type="radio" {...form.field('status', { value: 'draft' })} />`.
+- **Custom inputs:** `onChange` also takes a plain value, so `form.field('tags').onChange(['a', 'b'])` works.
+- **`form.collaboration`** holds `room`, `people`, `status`, `peopleIn(field)` and `isLive(field)`.
+- **Presence without a form:** `useCollaboration(props.collaboration)` returns the same, and `<Avatars collaboration={...} />` takes it.
 
 </details>
 
@@ -199,7 +204,11 @@ const form = useCollaborativeForm(() => props.collaboration, {
 </template>
 ```
 
+`v-collaborate` works on inputs, textareas, selects, checkboxes and radios. `form.collaboration` holds `room`, `people`, `status`, `peopleIn(field)` and `isLive(field)`, and `useCollaboration()` gives you the same without a form.
+
 </details>
+
+**TypeScript:** every entry point ships with type declarations. `form.field()` only accepts the form's own field names.
 
 | | Livewire | React | Vue |
 | --- | --- | --- | --- |
@@ -209,7 +218,7 @@ const form = useCollaborativeForm(() => props.collaboration, {
 | Faces | built in | `<Avatars>` | `<Avatars>` |
 | Who is in a field | carets | `<FieldPeople>` | `<FieldPeople>` |
 | Sync status | built in | `<Status>` | `<Status>` |
-| Save | `saveCollaboratively()` | `$room->save()` | `$room->save()` |
+| Save | `saveCollaboratively()` | `$room->update()` | `$room->update()` |
 
 ![The same moment in React, Vue and Livewire](docs/media/three-stacks.png)
 
@@ -261,10 +270,18 @@ bindTextField(room, 'title', document.querySelector('#title'))
 
 ## Saving
 
-`save()` takes what the form submitted and a closure that writes to the database:
+`update()` saves the record with what the form submitted and everybody's latest edits:
 
 ```php
-$post->collaboration()->save($validated, fn (array $values) => $post->update($values));
+$post->collaboration()->update($validated);
+```
+
+When saving is more than an update, use `save()` with a closure. It receives the merged values:
+
+```php
+$post->collaboration()->save($validated, function (array $values) use ($post) {
+    $post->fill($values)->publish();
+});
 ```
 
 Live fields come from the shared draft, which holds everybody's edits up to this moment, so a stale form can't overwrite someone else's typing. Other fields are saved as submitted. Everybody in the room then hears that the record was saved, and by whom.
@@ -397,8 +414,9 @@ Open <http://localhost:8000>, then pick a person and a stack. Use a private wind
 composer install && npm install
 
 composer test          # Pest: the merge engine, sync, saving, Livewire
-npm test               # node:test: the merge engine and the browser client
+npm test               # node:test: the merge engine, the browser client, the React adapter
 npm run lint
+npm run typecheck      # the type declarations, against the README's code
 
 cd demo && php artisan migrate:fresh --seed && php artisan serve --port=8123 &
 node tests/browser/smoke.mjs    # three real browsers, one per stack

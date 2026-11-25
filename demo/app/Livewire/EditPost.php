@@ -42,7 +42,7 @@ class EditPost extends Component
     {
         $this->validate(['title' => ['required', 'string', 'max:255'], 'status' => ['required', 'in:'.implode(',', array_keys(Post::STATUSES))]]);
 
-        $this->saveCollaboratively(fn (array $values) => $this->post->update($values));
+        $this->saveCollaboratively();
 
         $this->saved = true;
     }
