@@ -41,7 +41,9 @@ for (const [name, page] of all) {
     await page.keyboard.type(` ${name}`)
 }
 
-await expectEverywhere('text typed in React, Vue and Livewire merges', (page) => title(page).inputValue().then((value) => ['alice', 'bob', 'chloe'].every((name) => value.includes(name)) && value), await title(people.alice).inputValue().then(async (value) => { await people.alice.waitForTimeout(2000); return title(people.alice).inputValue() }))
+// Typed at the same place at the same time, their words may land in any order, but the same order everywhere.
+await expectEverywhere('text typed in React, Vue and Livewire merges', (page) => title(page).inputValue().then((value) => ['alice', 'bob', 'chloe'].every((name) => value.includes(name))), true)
+await expectEverywhere('and reads the same everywhere', (page) => title(page).inputValue(), await title(people.alice).inputValue())
 
 await people.bob.locator('select').selectOption('review')
 await expectEverywhere('a select changed in Vue shows everywhere', (page) => page.locator('select').inputValue(), 'review')
