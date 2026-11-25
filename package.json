@@ -1,0 +1,58 @@
+{
+    "name": "@solutionforest/laravel-collaboration",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The browser side of solutionforest/laravel-collaboration: a framework-free client, and adapters for Livewire, React, Vue and TipTap.",
+    "license": "MIT",
+    "type": "module",
+    "exports": {
+        ".": "./resources/js/index.js",
+        "./react": "./resources/js/react/index.js",
+        "./react/editor": "./resources/js/react/editor.js",
+        "./vue": "./resources/js/vue/index.js",
+        "./vue/editor": "./resources/js/vue/editor.js",
+        "./tiptap": "./resources/js/tiptap/index.js"
+    },
+    "files": [
+        "resources/js",
+        "resources/dist"
+    ],
+    "scripts": {
+        "build": "vite build",
+        "lint": "eslint resources/js tests/js",
+        "test": "node --test \"tests/js/*.test.js\"",
+        "check": "npm run lint && npm test"
+    },
+    "peerDependencies": {
+        "@inertiajs/react": "^3.0",
+        "@inertiajs/vue3": "^3.0",
+        "@tiptap/core": "^3.0",
+        "@tiptap/pm": "^3.0",
+        "@tiptap/react": "^3.0",
+        "@tiptap/starter-kit": "^3.0",
+        "@tiptap/vue-3": "^3.0",
+        "react": "^19.0",
+        "vue": "^3.5"
+    },
+    "peerDependenciesMeta": {
+        "@inertiajs/react": { "optional": true },
+        "@inertiajs/vue3": { "optional": true },
+        "@tiptap/core": { "optional": true },
+        "@tiptap/pm": { "optional": true },
+        "@tiptap/react": { "optional": true },
+        "@tiptap/starter-kit": { "optional": true },
+        "@tiptap/vue-3": { "optional": true },
+        "react": { "optional": true },
+        "vue": { "optional": true }
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@tiptap/core": "^3.35.0",
+        "@tiptap/pm": "^3.35.0",
+        "@tiptap/starter-kit": "^3.35.0",
+        "eslint": "^10.15.0",
+        "globals": "^17.14.0",
+        "jsdom": "^31.0.1",
+        "vite": "^8.0.0"
+    }
+}

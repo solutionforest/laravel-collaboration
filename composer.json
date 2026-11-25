@@ -1,0 +1,62 @@
+{
+    "name": "solutionforest/laravel-collaboration",
+    "description": "Google Docs-style collaboration for any Laravel app: live fields, presence and carets, with adapters for Livewire and Inertia (React and Vue).",
+    "keywords": ["laravel", "livewire", "inertia", "react", "vue", "tiptap", "collaboration", "crdt", "presence", "real-time"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Solution Forest",
+            "email": "info@solutionforest.net"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/broadcasting": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/database": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0"
+    },
+    "require-dev": {
+        "inertiajs/inertia-laravel": "^3.0",
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.20",
+        "livewire/livewire": "^4.0",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
+    },
+    "suggest": {
+        "livewire/livewire": "For the Livewire adapter (^4.0).",
+        "inertiajs/inertia-laravel": "For the Inertia adapter (^3.0)."
+    },
+    "autoload": {
+        "psr-4": {
+            "SolutionForest\\Collaboration\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SolutionForest\\Collaboration\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse",
+        "format": "pint"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SolutionForest\\Collaboration\\CollaborationServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
