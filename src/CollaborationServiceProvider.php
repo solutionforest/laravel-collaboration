@@ -54,7 +54,7 @@ final class CollaborationServiceProvider extends ServiceProvider
         Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'collaboration');
 
         $this->registerRoutes();
-        $this->registerChannel();
+        self::registerChannel();
         $this->registerCommands();
 
         // Tells a room at once when its record is deleted, and cleans up after it.
@@ -81,14 +81,64 @@ final class CollaborationServiceProvider extends ServiceProvider
 
     /**
      * Only people syncing in a room, in the same audience, may hear its pushes:
-     * they passed the room's authorisation to get there.
+     * they passed the room's authorisation to get there. Registered on the
+     * default broadcaster, so call this again if you switch broadcaster at runtime.
+     *
+     * People may be signed in with any session guard, such as a Filament
+     * panel's own, so every one of them is asked.
      */
-    private function registerChannel(): void
+    public static function registerChannel(): void
     {
+        $guards = self::sessionGuards();
+
         Broadcast::channel(
             RoomChanged::channel('{room}').'.{audience}',
-            static fn (Authenticatable $user, string $room, string $audience): bool => app(PresenceRepository::class)->isPresent($room, Identity::for($user)->key, $audience),
+            static function (Authenticatable $user, string $room, string $audience) use ($guards): bool {
+                $presence = app(PresenceRepository::class);
+                $people = [$user];
+
+                foreach ($guards as $guard) {
+                    $signedIn = request()->user($guard);
+
+                    if ($signedIn instanceof Authenticatable) {
+                        $people[] = $signedIn;
+                    }
+                }
+
+                foreach ($people as $person) {
+                    if ($presence->isPresent($room, Identity::for($person)->key, $audience)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+            ['guards' => $guards],
         );
+    }
+
+    /**
+     * The session guards, the default one first.
+     *
+     * @return list<string>
+     */
+    private static function sessionGuards(): array
+    {
+        $guards = [];
+
+        foreach (Data::map(config('auth.guards')) as $name => $guard) {
+            if ((Data::map($guard)['driver'] ?? null) === 'session') {
+                $guards[] = (string) $name;
+            }
+        }
+
+        $default = Data::nullableString(config('auth.defaults.guard'));
+
+        if ($default !== null && in_array($default, $guards, true)) {
+            $guards = [$default, ...array_values(array_diff($guards, [$default]))];
+        }
+
+        return $guards === [] && $default !== null ? [$default] : $guards;
     }
 
     private function registerCommands(): void
