@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Gate;
 use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Permissions;
+use SolutionForest\Collaboration\Presence\Identity;
 use SolutionForest\Collaboration\Tests\Fixtures\Models\Post;
 use SolutionForest\Collaboration\Tests\Fixtures\Models\User;
 use SolutionForest\Collaboration\Tests\Fixtures\Policies\PostPolicy;
@@ -124,4 +125,10 @@ it('refuses a value a picked field may not take', function (): void {
     $alice->type('status', 'deleted');
 
     $alice->sync()->assertStatus(409)->assertJson(['error' => 'rejected']);
+});
+
+it('finds the user the way the app says', function (): void {
+    Collaboration::resolveUsersUsing(fn () => $this->bob);
+
+    expect(Identity::current()?->name)->toBe('Bob');
 });

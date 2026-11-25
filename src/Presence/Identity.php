@@ -20,7 +20,7 @@ final readonly class Identity
 
     public static function current(): ?self
     {
-        $user = auth()->user();
+        $user = Collaboration::user();
 
         return $user === null ? null : self::for($user);
     }

@@ -42,7 +42,7 @@ final class Permissions
      */
     public static function mayCollaborate(Model $record, ?Authenticatable $user = null): bool
     {
-        $user ??= auth()->user();
+        $user ??= Collaboration::user();
 
         if ($user === null) {
             return false;

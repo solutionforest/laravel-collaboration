@@ -43,7 +43,11 @@ final class CollaborationServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        if (Collaboration::$runsMigrations) {
+            $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        }
+
+        $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'collaboration-migrations');
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'collaboration');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'collaboration');
 

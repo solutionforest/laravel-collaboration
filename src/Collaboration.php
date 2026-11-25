@@ -37,8 +37,14 @@ final class Collaboration
     /** Whether the package registers its sync route. */
     public static bool $registersRoutes = true;
 
+    /** Whether the package's migrations run. */
+    public static bool $runsMigrations = true;
+
     /** @var list<string> the colours people are told apart by */
     public static array $colors = Palette::DEFAULT;
+
+    /** @var (Closure(): ?Authenticatable)|null */
+    public static ?Closure $userResolver = null;
 
     /** @var (Closure(Authenticatable): ?string)|null */
     public static ?Closure $userNameResolver = null;
@@ -96,6 +102,28 @@ final class Collaboration
         self::$registersRoutes = false;
     }
 
+    /** Keep your own tables, for example after publishing and changing the migration. */
+    public static function ignoreMigrations(): void
+    {
+        self::$runsMigrations = false;
+    }
+
+    /**
+     * Who is signed in, where the default guard does not say, such as in a
+     * Filament panel with a guard of its own.
+     *
+     * @param  Closure(): ?Authenticatable  $callback
+     */
+    public static function resolveUsersUsing(Closure $callback): void
+    {
+        self::$userResolver = $callback;
+    }
+
+    public static function user(): ?Authenticatable
+    {
+        return self::$userResolver === null ? auth()->user() : (self::$userResolver)();
+    }
+
     /** @param Closure(Authenticatable): ?string $callback */
     public static function nameUsersUsing(Closure $callback): void
     {
@@ -149,6 +177,8 @@ final class Collaboration
         self::$audits = false;
         self::$reportsEditorErrors = false;
         self::$registersRoutes = true;
+        self::$runsMigrations = true;
+        self::$userResolver = null;
         self::$colors = Palette::DEFAULT;
         self::$userNameResolver = null;
         self::$userAvatarResolver = null;
