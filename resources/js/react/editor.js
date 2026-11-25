@@ -11,7 +11,7 @@ import { Collaborative } from '../tiptap/index.js'
  * @param {{form: any, field: string, extensions?: any[], className?: string}} props
  */
 export function CollaborativeEditor({ form, field, extensions = [StarterKit], className = '' }) {
-    const room = form.room
+    const { room } = form.collaboration
 
     const editor = useEditor({
         extensions: [...extensions, ...(room ? [Collaborative.configure({ room, field })] : [])],

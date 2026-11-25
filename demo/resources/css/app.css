@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@source '../../storage/framework/views/*.php';
+@source '../js/**/*.{js,jsx,vue}';
+
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* The demo's form controls. */
+@layer components {
+    .field-label { @apply flex items-center justify-between gap-2 text-sm font-medium text-slate-700; }
+    .field-input { @apply mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20; }
+    .button { @apply inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500; }
+    .editor .ProseMirror { @apply mt-1.5 min-h-48 rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20; }
+    .editor .ProseMirror h2 { @apply mb-2 text-lg font-semibold; }
+    .editor .ProseMirror p { @apply mb-2; }
+    .editor .ProseMirror ul { @apply mb-2 list-disc pl-6; }
+    .editor .ProseMirror ol { @apply mb-2 list-decimal pl-6; }
+}

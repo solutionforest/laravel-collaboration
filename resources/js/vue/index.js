@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/vue3'
-import { computed, defineComponent, h, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, ref, shallowRef, unref, watch } from 'vue'
 import { bindTextField } from '../bindings/text-field.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
@@ -52,6 +52,8 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
  *     <input v-model="form.title" v-collaborate:title="form">
  *     <button @click="form.put(`/posts/${post.id}`)">Save</button>
  *
+ * `form.collaboration` holds the room, the people in it and its status.
+ *
  * @template {Record<string, any>} TForm
  * @param {() => RoomConfig | null} config
  * @param {TForm} data
@@ -70,7 +72,8 @@ export function useCollaborativeForm(config, data, options = {}) {
     /** @param {string} field */
     const peopleIn = (field) => people.value.filter((person) => person.field === field && !person.idle)
 
-    return Object.assign(form, { room, people, status, peopleIn })
+    // Under one key, so nothing collides with the form's own fields.
+    return Object.assign(form, { collaboration: { room, people, status, peopleIn } })
 }
 
 /** @type {WeakMap<Element, () => void>} */
@@ -100,7 +103,7 @@ export const vCollaborate = {
  * @param {import('vue').DirectiveBinding<any>} binding
  */
 function connect(element, binding) {
-    const room = binding.value?.room?.value ?? binding.value?.room ?? null
+    const room = /** @type {Room | null} */ (unref(binding.value?.collaboration?.room) ?? null)
     const field = binding.arg ?? ''
 
     if (!room || bound.has(element) || !field) return
@@ -132,8 +135,8 @@ export const Avatars = defineComponent({
         addStyles()
 
         return () => {
-            const config = props.form.room?.config
-            const people = props.form.people ?? []
+            const { room, people } = props.form.collaboration
+            const config = room?.config
             const max = props.limit ?? config?.avatarLimit ?? 5
 
             return h('div', { class: 'collab-avatars', title: people.length ? undefined : config?.strings?.alone }, [
@@ -155,7 +158,7 @@ export const FieldPeople = defineComponent({
     setup(props) {
         addStyles()
 
-        return () => h('span', { class: 'collab-field-people' }, props.form.peopleIn(props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
+        return () => h('span', { class: 'collab-field-people' }, props.form.collaboration.peopleIn(props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
     },
 })
 
@@ -165,13 +168,17 @@ export const Status = defineComponent({
     props: { form: { type: Object, required: true } },
     setup(props) {
         const notice = ref(/** @type {string | null} */ (null))
-        const strings = computed(() => props.form.room?.config.strings ?? {})
+        const strings = computed(() => props.form.collaboration.room?.config.strings ?? {})
 
-        watch(() => props.form.room, (room) => room?.on('saved', ({ name }) => {
+        watch(() => props.form.collaboration.room, (room) => room?.on('saved', ({ name }) => {
             notice.value = translate(strings.value.saved ?? ':name saved', { name: name ?? '' })
             setTimeout(() => (notice.value = null), 4000)
         }), { immediate: true })
 
-        return () => h('span', { 'data-status': props.form.status }, notice.value ?? strings.value[props.form.status] ?? '')
+        return () => {
+            const { status } = props.form.collaboration
+
+            return h('span', { 'data-status': status }, notice.value ?? strings.value[status] ?? '')
+        }
     },
 })

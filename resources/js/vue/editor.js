@@ -12,7 +12,7 @@ export const CollaborativeEditor = defineComponent({
         extensions: { type: Array, default: () => [StarterKit] },
     },
     setup(props) {
-        const room = props.form.room
+        const { room } = props.form.collaboration
 
         const editor = shallowRef(new Editor({
             extensions: [...props.extensions, ...(room ? [Collaborative.configure({ room, field: props.field })] : [])],

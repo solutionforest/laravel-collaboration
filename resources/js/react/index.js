@@ -49,6 +49,8 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
  *     <input {...form.field('title')} />
  *     <button onClick={() => form.put(`/posts/${post.id}`)}>Save</button>
  *
+ * `form.collaboration` holds the room, the people in it and its status.
+ *
  * @template {Record<string, any>} TForm
  * @param {RoomConfig | null} config
  * @param {TForm} data
@@ -113,17 +115,24 @@ export function useCollaborativeForm(config, data, options = {}) {
     /** @param {string} name */
     const peopleIn = (name) => people.filter((person) => person.field === name && !person.idle)
 
-    return Object.assign(form, { room, people, status, field, peopleIn })
+    // Under one key, so nothing collides with the form's own fields.
+    return Object.assign(form, { field, collaboration: { room, people, status, peopleIn } })
 }
+
+/**
+ * @typedef {{room: Room | null, people: Person[], status: string, peopleIn: (field: string) => Person[]}} Collaboration
+ */
 
 /**
  * The faces of everybody else in the room.
  *
  *     <Avatars form={form} />
  *
- * @param {{form?: {room: Room | null, people: Person[]}, room?: Room | null, people?: Person[], limit?: number, className?: string}} props
+ * @param {{form: {collaboration: Collaboration}, limit?: number, className?: string}} props
  */
-export function Avatars({ form, room = form?.room, people = form?.people ?? [], limit, className = '' }) {
+export function Avatars({ form, limit, className = '' }) {
+    const { room, people } = form.collaboration
+
     useMemo(addStyles, [])
 
     const config = room?.config
@@ -147,7 +156,7 @@ export function Avatars({ form, room = form?.room, people = form?.people ?? [], 
  *
  *     <FieldPeople form={form} field="title" />
  *
- * @param {{form: {peopleIn: (field: string) => Person[]}, field: string, className?: string}} props
+ * @param {{form: {collaboration: Collaboration}, field: string, className?: string}} props
  */
 export function FieldPeople({ form, field, className = '' }) {
     useMemo(addStyles, [])
@@ -155,23 +164,24 @@ export function FieldPeople({ form, field, className = '' }) {
     return createElement(
         'span',
         { className: `collab-field-people ${className}`.trim() },
-        ...form.peopleIn(field).map((person) => createElement('span', { key: person.client, className: 'collab-field-person', style: { background: person.color } }, person.name)),
+        ...form.collaboration.peopleIn(field).map((person) => createElement('span', { key: person.client, className: 'collab-field-person', style: { background: person.color } }, person.name)),
     )
 }
 
 /**
  * "All changes shared", "Offline — retrying"…
  *
- * @param {{form: {room: Room | null, status: string}, className?: string}} props
+ * @param {{form: {collaboration: Collaboration}, className?: string}} props
  */
 export function Status({ form, className = '' }) {
+    const { room, status } = form.collaboration
     const [notice, setNotice] = useState(/** @type {string | null} */ (null))
-    const strings = form.room?.config.strings ?? {}
+    const strings = room?.config.strings ?? {}
 
-    useEffect(() => form.room?.on('saved', ({ name }) => {
+    useEffect(() => room?.on('saved', ({ name }) => {
         setNotice(translate(strings.saved ?? ':name saved', { name: name ?? '' }))
         setTimeout(() => setNotice(null), 4000)
-    }), [form.room])
+    }), [room])
 
-    return createElement('span', { className, 'data-status': form.status }, notice ?? strings[form.status] ?? '')
+    return createElement('span', { className, 'data-status': status }, notice ?? strings[status] ?? '')
 }

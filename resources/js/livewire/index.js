@@ -150,7 +150,10 @@ function scan() {
     for (const el of document.querySelectorAll(/** @type {'div'} */ ('[data-collaboration]'))) {
         const source = el.dataset.collaboration ?? ''
 
-        if (!source || !el.closest('[wire\\:id]')) continue
+        const component = el.closest('[wire\\:id]')
+
+        // Livewire starts after this script; a room needs its component.
+        if (!source || !component || !window.Livewire.find(component.getAttribute('wire:id'))) continue
 
         const config = JSON.parse(source)
         const known = rooms.get(el) ?? [...rooms.values()].find((entry) => !entry.el.isConnected && entry.room.config.draft === config.draft)

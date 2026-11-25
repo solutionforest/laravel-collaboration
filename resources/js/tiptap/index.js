@@ -25,64 +25,70 @@ export const Collaborative = Extension.create({
 
     addProseMirrorPlugins() {
         const { room, field } = this.options
-        const editor = this.editor
 
         if (!room || !field) return []
 
         addStyles()
 
-        /** @type {{anchor: Id | null, head: Id | null} | null} */
-        let saved = null
         let applying = false
-
-        const unbind = room.bind(field, {
-            capture() {
-                const { anchor, head } = editor.state.selection
-
-                saved = { anchor: room.idAt(field, toDraft(editor.state.doc, anchor)), head: room.idAt(field, toDraft(editor.state.doc, head)) }
-            },
-            render() {
-                const value = room.value(field)
-
-                if (!value || editor.isDestroyed) return
-
-                const transaction = replacement(editor.state, buildDocument(editor.schema, value))
-
-                if (saved && editor.isFocused) {
-                    const doc = transaction.doc
-                    const anchor = toEditor(doc, room.indexOf(field, saved.anchor) ?? 0)
-                    const head = toEditor(doc, room.indexOf(field, saved.head) ?? 0)
-
-                    transaction.setSelection(TextSelection.between(doc.resolve(anchor), doc.resolve(head)))
-                }
-
-                saved = null
-                applying = true
-                editor.view.dispatch(transaction.setMeta('addToHistory', false).setMeta(key, 'remote'))
-                applying = false
-            },
-            cursor() {
-                if (!editor.isFocused) return null
-
-                const { anchor, head } = editor.state.selection
-
-                return { anchor: toDraft(editor.state.doc, anchor), head: toDraft(editor.state.doc, head) }
-            },
-        })
-
-        const stopListening = room.on('people', () => {
-            if (!editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta(key, 'people'))
-        })
 
         return [
             new Plugin({
                 key,
-                view: () => ({
-                    destroy() {
-                        stopListening()
-                        unbind()
-                    },
-                }),
+                // Bound while the editor is on the page: an editor built but never shown must not take the field.
+                view(view) {
+                    /** @type {{anchor: Id | null, head: Id | null} | null} */
+                    let saved = null
+
+                    const unbind = room.bind(field, {
+                        capture() {
+                            const { anchor, head } = view.state.selection
+
+                            saved = { anchor: room.idAt(field, toDraft(view.state.doc, anchor)), head: room.idAt(field, toDraft(view.state.doc, head)) }
+                        },
+                        render() {
+                            const value = room.value(field)
+
+                            if (!value || view.isDestroyed) return
+
+                            const transaction = replacement(view.state, buildDocument(view.state.schema, value))
+
+                            if (saved && view.hasFocus()) {
+                                const doc = transaction.doc
+                                const anchor = toEditor(doc, room.indexOf(field, saved.anchor) ?? 0)
+                                const head = toEditor(doc, room.indexOf(field, saved.head) ?? 0)
+
+                                transaction.setSelection(TextSelection.between(doc.resolve(anchor), doc.resolve(head)))
+                            }
+
+                            saved = null
+                            applying = true
+                            view.dispatch(transaction.setMeta('addToHistory', false).setMeta(key, 'remote'))
+                            applying = false
+                        },
+                        cursor() {
+                            if (!view.hasFocus()) return null
+
+                            const { anchor, head } = view.state.selection
+
+                            return { anchor: toDraft(view.state.doc, anchor), head: toDraft(view.state.doc, head) }
+                        },
+                    })
+
+                    const stopListening = room.on('people', () => {
+                        if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, 'people'))
+                    })
+
+                    // The draft wins over the content the editor started with.
+                    if (room.isReady) queueMicrotask(() => room.bindings.get(field)?.render?.())
+
+                    return {
+                        destroy() {
+                            stopListening()
+                            unbind()
+                        },
+                    }
+                },
                 props: {
                     decorations: (state) => carets(room, field, state.doc),
                     handleDOMEvents: {

@@ -1,0 +1,35 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "concurrently": "^10.0.3",
+        "laravel-vite-plugin": "^3.1",
+        "tailwindcss": "^4.0.0",
+        "vite": "^8.0.0"
+    },
+    "optionalDependencies": {
+        "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@inertiajs/react": "^3.11.0",
+        "@inertiajs/vue3": "^3.11.0",
+        "@solutionforest/laravel-collaboration": "file:..",
+        "@tiptap/core": "^3.35.0",
+        "@tiptap/pm": "^3.35.0",
+        "@tiptap/react": "^3.35.0",
+        "@tiptap/starter-kit": "^3.35.0",
+        "@tiptap/vue-3": "^3.35.0",
+        "@vitejs/plugin-react": "^6.3.0",
+        "@vitejs/plugin-vue": "^6.0.11",
+        "playwright": "^1.65.1",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "vue": "^3.5.46"
+    }
+}
