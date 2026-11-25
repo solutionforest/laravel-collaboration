@@ -181,7 +181,7 @@ final readonly class SyncController
     /** @param list<string> $fields */
     private function audit(RoomContext $context, ?Model $record, ?Authenticatable $user, array $fields): void
     {
-        if ($fields !== [] && $record !== null && $user !== null && Collaboration::$audits) {
+        if ($fields !== [] && $record !== null && $user !== null && Collaboration::audits()) {
             $this->trail->record($context->room, $record, Contributor::of($user), $fields);
         }
     }
@@ -193,7 +193,7 @@ final readonly class SyncController
      */
     private function report(RoomContext $context, Identity $identity, array $problems): void
     {
-        if ($problems === [] || ! Collaboration::$reportsEditorErrors) {
+        if ($problems === [] || ! Collaboration::reportsEditorErrors()) {
             return;
         }
 

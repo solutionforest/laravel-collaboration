@@ -228,9 +228,9 @@ final class Room implements Arrayable, JsonSerializable
             'draft' => $context->draft(),
             'input' => self::INPUT,
             'interval' => Collaboration::$pollingInterval,
-            'channel' => Collaboration::$broadcasts ? Audience::of($context)->channel() : null,
+            'channel' => Collaboration::broadcasts() ? Audience::of($context)->channel() : null,
             'avatarLimit' => Collaboration::$avatarLimit,
-            'reportErrors' => $this->isEditing() && Collaboration::$reportsEditorErrors,
+            'reportErrors' => $this->isEditing() && Collaboration::reportsEditorErrors(),
             'user' => Identity::for($user)->key,
             'strings' => trans('collaboration::collaboration.client'),
         ];
@@ -338,7 +338,7 @@ final class Room implements Arrayable, JsonSerializable
             $user,
         );
 
-        if (Collaboration::$audits) {
+        if (Collaboration::audits()) {
             foreach ($contributors as $field => $people) {
                 foreach ($people as $contributor) {
                     app(EditTrail::class)->record($this->id(), $this->record, $contributor, [(string) $field]);

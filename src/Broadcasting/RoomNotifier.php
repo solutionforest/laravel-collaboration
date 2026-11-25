@@ -32,7 +32,7 @@ final class RoomNotifier
 
     public static function isEnabled(): bool
     {
-        return Collaboration::$broadcasts;
+        return Collaboration::broadcasts();
     }
 
     /**

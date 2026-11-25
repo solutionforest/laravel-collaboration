@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use SolutionForest\Collaboration\Presence\Palette;
+use SolutionForest\Collaboration\Support\Data;
 
 /**
  * The one place an application tells the package how it works:
@@ -19,8 +20,8 @@ use SolutionForest\Collaboration\Presence\Palette;
  */
 final class Collaboration
 {
-    /** Whether changes are pushed over Laravel broadcasting as well as polled. */
-    public static bool $broadcasts = false;
+    /** @var bool|(Closure(): bool) whether changes are pushed over Laravel broadcasting as well as polled */
+    public static bool|Closure $broadcasts = false;
 
     /** How often, in milliseconds, an open page asks for changes when nothing is pushed. */
     public static int $pollingInterval = 1000;
@@ -28,11 +29,11 @@ final class Collaboration
     /** How many faces a presence bar shows before it says "+3". */
     public static int $avatarLimit = 5;
 
-    /** Whether each person's edits are written to the per-minute edit trail. */
-    public static bool $audits = false;
+    /** @var bool|(Closure(): bool) whether each person's edits are written to the per-minute edit trail */
+    public static bool|Closure $audits = false;
 
-    /** Whether browsers report the editor errors they recovered from. */
-    public static bool $reportsEditorErrors = false;
+    /** @var bool|(Closure(): bool) whether browsers report the editor errors they recovered from */
+    public static bool|Closure $reportsEditorErrors = false;
 
     /** Whether the package registers its sync route. */
     public static bool $registersRoutes = true;
@@ -40,8 +41,8 @@ final class Collaboration
     /** Whether the package's migrations run. */
     public static bool $runsMigrations = true;
 
-    /** @var list<string> the colours people are told apart by */
-    public static array $colors = Palette::DEFAULT;
+    /** @var list<string>|(Closure(): list<string>) the colours people are told apart by */
+    public static array|Closure $colors = Palette::DEFAULT;
 
     /** @var (Closure(): ?Authenticatable)|null */
     public static ?Closure $userResolver = null;
@@ -64,8 +65,12 @@ final class Collaboration
         return new Room($record);
     }
 
-    /** Push changes as they happen, through the application's broadcaster. */
-    public static function broadcast(bool $broadcasts = true): void
+    /**
+     * Push changes as they happen, through the application's broadcaster.
+     *
+     * @param  bool|(Closure(): bool)  $broadcasts
+     */
+    public static function broadcast(bool|Closure $broadcasts = true): void
     {
         self::$broadcasts = $broadcasts;
     }
@@ -80,18 +85,20 @@ final class Collaboration
         self::$avatarLimit = max(1, $limit);
     }
 
-    /** @param list<string> $colors */
-    public static function colors(array $colors): void
+    /** @param list<string>|(Closure(): list<string>) $colors */
+    public static function colors(array|Closure $colors): void
     {
         self::$colors = $colors;
     }
 
-    public static function audit(bool $audits = true): void
+    /** @param bool|(Closure(): bool) $audits */
+    public static function audit(bool|Closure $audits = true): void
     {
         self::$audits = $audits;
     }
 
-    public static function reportEditorErrors(bool $reports = true): void
+    /** @param bool|(Closure(): bool) $reports */
+    public static function reportEditorErrors(bool|Closure $reports = true): void
     {
         self::$reportsEditorErrors = $reports;
     }
@@ -158,9 +165,24 @@ final class Collaboration
         self::$roomScopeResolver = $callback;
     }
 
+    public static function broadcasts(): bool
+    {
+        return (bool) value(self::$broadcasts);
+    }
+
+    public static function audits(): bool
+    {
+        return (bool) value(self::$audits);
+    }
+
+    public static function reportsEditorErrors(): bool
+    {
+        return (bool) value(self::$reportsEditorErrors);
+    }
+
     public static function palette(): Palette
     {
-        return new Palette(self::$colors);
+        return new Palette(Data::strings(value(self::$colors)));
     }
 
     public static function roomScope(?Model $record = null): mixed
