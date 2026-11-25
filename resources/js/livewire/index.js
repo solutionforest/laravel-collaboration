@@ -204,19 +204,27 @@ function roomFor(element) {
  * @param {(room: Room) => void} callback
  */
 function whenReady(element, callback) {
+    let attempts = 0
+
     const attempt = () => {
         const room = roomFor(element)
 
         if (room?.isReady) return callback(room)
         if (room) return room.on('ready', () => callback(room))
 
-        setTimeout(attempt, 100)
+        // Livewire may still be starting; a page without a room stops asking after a minute.
+        if (++attempts < 600) setTimeout(attempt, 100)
     }
 
     attempt()
 }
 
-window.Collaboration = { ...(window.Collaboration ?? {}), rooms, roomFor, whenReady, Room }
+const queued = window.Collaboration?.queue ?? []
+
+window.Collaboration = { rooms, roomFor, whenReady, Room }
+
+// Calls made before this script loaded, kept by the stub `<x-collaboration::room>` renders.
+queued.forEach(([element, callback]) => whenReady(element, callback))
 
 document.addEventListener('livewire:initialized', scan)
 document.addEventListener('livewire:navigated', scan)

@@ -15,6 +15,8 @@
     </div>
 
     @assets
+        {{-- Until the script below has loaded, calls to Collaboration.whenReady() wait in this queue. --}}
+        <script>window.Collaboration = window.Collaboration || { queue: [], whenReady(element, callback) { this.queue.push([element, callback]) } }</script>
         <script src="{{ route('collaboration.livewire', ['v' => \SolutionForest\Collaboration\Http\Controllers\ScriptController::version()]) }}" defer></script>
     @endassets
 @endif

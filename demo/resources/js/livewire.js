@@ -9,7 +9,7 @@ import { Collaborative } from '@solutionforest/laravel-collaboration/tiptap'
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('richEditor', (field) => ({
         init() {
-            const start = () => window.Collaboration.whenReady(this.$el, (room) => {
+            window.Collaboration.whenReady(this.$el, (room) => {
                 // Kept out of Alpine's reactive state: ProseMirror must not be proxied.
                 const editor = new Editor({
                     element: this.$refs.editor,
@@ -20,11 +20,6 @@ document.addEventListener('alpine:init', () => {
 
                 this.$cleanup?.(() => editor.destroy())
             })
-
-            // The package's script may load after this one.
-            const wait = () => (window.Collaboration?.whenReady ? start() : setTimeout(wait, 50))
-
-            wait()
         },
     }))
 })
