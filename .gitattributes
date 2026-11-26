@@ -6,16 +6,22 @@
 *.md diff=markdown
 *.php diff=php
 
+# Composer downloads an archive without these. resources/js and package.json
+# stay: Inertia apps install the browser side from vendor/.
 /.github export-ignore
 /demo export-ignore
 /docs export-ignore
 /website export-ignore
 /tests export-ignore
-/resources/js export-ignore
 /resources/css export-ignore
 /scripts export-ignore
-/package.json export-ignore
 /package-lock.json export-ignore
 /vite.config.js export-ignore
+/vite.editor.config.js export-ignore
+/vite.features.config.js export-ignore
+/eslint.config.js export-ignore
+/tsconfig.json export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore

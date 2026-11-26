@@ -1,6 +1,6 @@
 {
     "name": "@solutionforest/laravel-collaboration",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "private": true,
     "description": "The browser side of solutionforest/laravel-collaboration: a framework-free client, and adapters for Livewire, React, Vue and TipTap.",
     "license": "MIT",
