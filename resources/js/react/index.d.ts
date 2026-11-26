@@ -1,6 +1,6 @@
 import type { InertiaFormProps } from '@inertiajs/react'
 import type { ReactElement } from 'react'
-import type { CommentsState, Conflict, Person, RecordComment, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Version, CommentsState, Conflict, Person, RecordComment, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -82,3 +82,9 @@ export function useComments(source: { collaboration: { room: Room | null } } | {
 
 /** A record's comments, with a box to write one; `field` shows one field's. */
 export function Comments(props: { form: { collaboration: { room: Room | null } }, field?: string | null, className?: string }): ReactElement
+
+/** The record's history, with Restore for editors. */
+export function History(props: { form: { collaboration: { room: Room | null } }, className?: string }): ReactElement
+
+/** The record's history, for an app's own UI. */
+export function useVersions(form: { collaboration: { room: Room | null } }): { versions: Version[], canRestore: boolean, restore(id: number): Promise<unknown> | undefined }

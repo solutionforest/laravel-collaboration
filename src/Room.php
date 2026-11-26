@@ -676,7 +676,7 @@ final class Room implements Arrayable, JsonSerializable
     {
         $endpoints = [];
 
-        foreach (['values', 'comments', 'comments.store', 'comments.resolve', 'comments.reopen'] as $name) {
+        foreach (['values', 'comments', 'comments.store', 'comments.resolve', 'comments.reopen', 'versions', 'versions.restore'] as $name) {
             if (app('router')->has("collaboration.{$name}")) {
                 $endpoints[$name] = route("collaboration.{$name}");
             }

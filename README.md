@@ -422,6 +422,20 @@ Collaboration::mentionUsersUsing(fn (Post $post) => $post->team->users);
 Event::listen(CommentPosted::class, fn (CommentPosted $event) => /* notify each of $event->comment->mentions */);
 ```
 
+### Version history
+
+The shared draft keeps versions while people edit, every few minutes, and at each save. Show them, and let editors bring one back for everybody:
+
+```jsx
+<History form={form} />                  // React; Vue: <History :form="form" />
+```
+
+```blade
+<x-collaboration::history />             {{-- Livewire --}}
+```
+
+Restoring keeps the draft as it was in the history too, so it can be undone. `useVersions(form)` gives the list and `restore()` for your own UI.
+
 ### Following a colleague
 
 Click somebody's face in the avatars to follow them: the page brings whichever field they are in into view as they move. Click again, or do anything yourself, to stop. In code: `form.collaboration.follow(person.client)`.

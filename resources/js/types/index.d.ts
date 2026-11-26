@@ -247,3 +247,16 @@ export interface CommentsState<TList> {
 
 /** Draws a record's comments into an element; returns what removes them. */
 export function renderComments(element: HTMLElement, room: Room, options?: { field?: string | null }): () => void
+
+/** One version of the shared draft. */
+export interface Version {
+    id: number
+    /** `edit`, `save`, `before`, `restore` or `discard`. */
+    reason: string
+    name: string | null
+    at: string
+    changed: string[]
+}
+
+/** Draws the record's history into an element; returns what removes it. */
+export function renderHistory(element: HTMLElement, room: Room): () => void

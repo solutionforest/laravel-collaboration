@@ -7,6 +7,7 @@ import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
 import { renderComments } from '../ui/comments.js'
+import { renderHistory } from '../ui/history.js'
 
 /**
  * The Livewire adapter. `<x-collaboration::room>` renders an element with the
@@ -105,6 +106,14 @@ class LivewireRoom {
 
             element.dataset.collabMounted = '1'
             renderComments(element, this.room, element.dataset.field ? { field: element.dataset.field } : {})
+        }
+
+        // `<x-collaboration::history>` in the component.
+        for (const element of this.component.querySelectorAll(/** @type {'div'} */ ('[data-collab-history]'))) {
+            if (element.dataset.collabMounted) continue
+
+            element.dataset.collabMounted = '1'
+            renderHistory(element, this.room)
         }
 
         this.publish()

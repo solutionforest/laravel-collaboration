@@ -21,6 +21,10 @@ button.collab-avatar, .collab-avatar[role=button] { padding: 0; cursor: pointer;
 .collab-comment-form textarea { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
 .collab-comment-mentions { display: flex; flex-wrap: wrap; gap: 4px; }
 .collab-mention { padding: 0 3px; border-radius: 4px; background: #e0e7ff; color: #3730a3; font-weight: 600; }
+.collab-history { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font: 14px/1.5 system-ui, sans-serif; }
+.collab-version { padding: 8px 12px; border-left: 3px solid #c7d2fe; }
+.collab-version p { margin: 0; }
+.collab-version button { margin-top: 4px; padding: 2px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
 .collab-conflicts { display: grid; gap: 8px; }
 .collab-conflict { padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 8px; background: #fffbeb; font: 14px/1.5 system-ui, sans-serif; color: #78350f; }
 .collab-conflict p { margin: 0 0 6px; }
