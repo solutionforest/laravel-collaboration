@@ -1,6 +1,6 @@
 import type { InertiaForm } from '@inertiajs/vue3'
 import type { DefineComponent, Directive, Ref, ShallowRef } from 'vue'
-import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -29,6 +29,8 @@ export interface FieldReference {
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaForm<TForm> & {
     /** For `v-collaborate="form.field('title')"`: only the form's own fields. */
     field(name: keyof TForm & string): FieldReference
+    /** A repeater: `v-collaborate="form.items('lines').field(line.key, 'title')"`. */
+    items(name: keyof TForm & string): Repeater<FieldReference & { key: string, path: string }>
     collaboration: {
         room: Room | null
         people: Person[]

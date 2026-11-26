@@ -2,7 +2,9 @@ import { router, useForm } from '@inertiajs/react'
 import { createElement, useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { bindItems } from '../bindings/items.js'
 import { FormMemory } from '../core/form-memory.js'
+import { listOps, toList } from '../core/items.js'
 import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
@@ -95,8 +97,20 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     // Others' edits, into the form's state.
     useEffect(() => room?.on('change', ({ field, value }) => {
-        if (field in data) latest.current.setData(field, value ?? emptyLike(data[field]))
+        if (!(field in data)) return
+
+        // A repeater's items are a list in the form, keyed in the draft.
+        latest.current.setData(field, room.config.fields[field] === 'items' ? toList(value) : value ?? emptyLike(data[field]))
     }), [room])
+
+    // Each repeater: one binding for the list, and its sub-field inputs attached as they render.
+    const repeaters = useRef(/** @type {Map<string, Repeater>} */ (new Map()))
+
+    useEffect(() => {
+        repeaters.current.forEach((repeater) => repeater.connect(room))
+
+        return () => repeaters.current.forEach((repeater) => repeater.disconnect())
+    }, [room])
 
     // Inputs that mounted before the room joined are bound once it has; a room that goes takes them with it.
     useEffect(() => {
@@ -187,8 +201,38 @@ export function useCollaborativeForm(config, data, options = {}) {
         }
     }
 
+    /**
+     * A repeater: its list, what changes it, and props for each item's sub-field inputs.
+     *
+     *     const lines = form.items('lines')
+     *
+     *     {lines.list.map((line) => <input key={line.key} {...lines.field(line.key, 'title')} />)}
+     *     <button onClick={() => lines.add({ title: '' })}>Add</button>
+     *
+     * @param {keyof TForm & string} name
+     */
+    const items = (name) => {
+        const repeater = repeaters.current.get(name) ?? new Repeater(name, () => latest.current)
+
+        if (!repeaters.current.has(name)) {
+            repeaters.current.set(name, repeater)
+            repeater.connect(room)
+        }
+
+        const list = /** @type {import('../core/items.js').Item[]} */ (form.data[name] ?? [])
+
+        return {
+            list,
+            add: (/** @type {Record<string, any>} */ item = {}) => repeater.change(listOps.add(list, item)),
+            remove: (/** @type {string} */ key) => repeater.change(listOps.remove(list, key)),
+            move: (/** @type {string} */ key, /** @type {number} */ to) => repeater.change(listOps.move(list, key, to)),
+            field: (/** @type {string} */ key, /** @type {string} */ path) => repeater.props(key, path, list.find((item) => item.key === key)?.[path]),
+        }
+    }
+
     return Object.assign(form, {
         field,
+        items,
         collaboration: { ...collaboration, conflicts, ...resolve },
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
@@ -282,6 +326,104 @@ class FieldBinding {
         this.unlock?.()
         this.unbindText = null
         this.unlock = null
+    }
+}
+
+/**
+ * One repeater of a form: the list binding, and a stable `ref` for each of
+ * its items' sub-field inputs.
+ */
+class Repeater {
+    /** @type {ReturnType<typeof bindItems> | null} */
+    binding = null
+
+    /** @type {Map<string, {ref: (element: any) => void, element: any, detach: (() => void) | null}>} */
+    inputs = new Map()
+
+    /**
+     * @param {string} name
+     * @param {() => {data: Record<string, any>, setData: (field: string, value: any) => void}} form
+     */
+    constructor(name, form) {
+        this.name = name
+        this.form = form
+    }
+
+    /** @param {Room | null} room */
+    connect(room) {
+        if (this.binding || !room || room.config.fields[this.name] !== 'items') return
+
+        this.binding = bindItems(room, this.name, { onValueChange: (list) => this.form().setData(this.name, list) })
+        this.inputs.forEach((input, at) => this.attach(at, input))
+    }
+
+    disconnect() {
+        this.inputs.forEach((input) => {
+            input.detach?.()
+            input.detach = null
+        })
+        this.binding?.destroy()
+        this.binding = null
+    }
+
+    /** @param {import('../core/items.js').Item[]} list */
+    change(list) {
+        this.form().setData(this.name, list)
+        this.binding?.change(list)
+    }
+
+    /**
+     * @param {string} key
+     * @param {string} path
+     * @param {any} value
+     */
+    props(key, path, value) {
+        const at = `${key}\u0000${path}`
+        const input = this.inputs.get(at) ?? { element: null, detach: null, ref: (/** @type {any} */ element) => this.ref(at, element) }
+
+        this.inputs.set(at, input)
+
+        return {
+            name: `${this.name}.${key}.${path}`,
+            ref: input.ref,
+            onChange: (/** @type {any} */ event) => {
+                // Text is shared by the binding; the form keeps up for saving and validation.
+                const list = /** @type {import('../core/items.js').Item[]} */ (this.form().data[this.name] ?? [])
+
+                this.form().setData(this.name, list.map((item) => (item.key === key ? { ...item, [path]: valueOf(event) } : item)))
+            },
+            // Written by the binding, never by React, as text fields are.
+            ...(typeof value === 'boolean' ? { checked: value } : { defaultValue: value ?? '' }),
+        }
+    }
+
+    /**
+     * @param {string} at
+     * @param {any} element
+     */
+    ref(at, element) {
+        const input = this.inputs.get(at)
+
+        if (!input || input.element === element) return
+
+        input.detach?.()
+        input.detach = null
+        input.element = element
+
+        if (element) this.attach(at, input)
+        else this.inputs.delete(at)
+    }
+
+    /**
+     * @param {string} at
+     * @param {{element: any, detach: (() => void) | null}} input
+     */
+    attach(at, input) {
+        if (!this.binding || !input.element || input.detach) return
+
+        const [key = '', path = ''] = at.split('\u0000')
+
+        input.detach = this.binding.attach(key, path, input.element)
     }
 }
 

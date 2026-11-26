@@ -205,3 +205,16 @@ export class RecordPresence {
     on(event: 'people', callback: (people: Record<string, RecordPerson[]>) => void): () => void
     destroy(): void
 }
+
+/** One item of a repeater, as a form holds it. */
+export type Item = Record<string, any> & { key: string }
+
+/** A repeater's list, and what changes it. */
+export interface Repeater<TFieldProps> {
+    readonly list: Item[]
+    add(item?: Record<string, any>): void
+    remove(key: string): void
+    move(key: string, to: number): void
+    /** What binds one item's sub-field input. */
+    field(key: string, path: string): TFieldProps
+}

@@ -1,6 +1,6 @@
 import type { InertiaFormProps } from '@inertiajs/react'
 import type { ReactElement } from 'react'
-import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -45,6 +45,8 @@ export interface FormCollaboration extends Collaboration {
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaFormProps<TForm> & {
     /** Props for the field's input. For a radio, or a checkbox in a group, pass the value it stands for. */
     field(name: keyof TForm & string, options?: { value?: string | number }): FieldProps
+    /** A repeater: `form.items('lines')`, with props for each item's sub-field inputs. */
+    items(name: keyof TForm & string): Repeater<FieldProps>
     collaboration: FormCollaboration
 }
 

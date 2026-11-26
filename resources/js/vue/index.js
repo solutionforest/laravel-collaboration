@@ -2,7 +2,9 @@ import { router, useForm } from '@inertiajs/vue3'
 import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { bindItems } from '../bindings/items.js'
 import { FormMemory } from '../core/form-memory.js'
+import { listOps, toList } from '../core/items.js'
 import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
@@ -88,7 +90,10 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     // Others' edits, into the form's state.
     const stop = room.value?.on('change', ({ field, value }) => {
-        if (field in data) form[field] = value ?? (typeof data[field] === 'string' ? '' : null)
+        if (!(field in data)) return
+
+        // A repeater's items are a list in the form, keyed in the draft.
+        form[field] = room.value?.config.fields[field] === 'items' ? toList(value) : value ?? (typeof data[field] === 'string' ? '' : null)
     })
 
     onScopeDispose(() => stop?.())
@@ -147,6 +152,28 @@ export function useCollaborativeForm(config, data, options = {}) {
         },
         /** What `v-collaborate` binds: `v-collaborate="form.field('title')"`. */
         field: (/** @type {keyof TForm & string} */ name) => ({ form, name }),
+        /**
+         * A repeater: its list, what changes it, and what `v-collaborate` binds for each sub-field:
+         *
+         *     <input v-model="line.title" v-collaborate="form.items('lines').field(line.key, 'title')">
+         */
+        items: (/** @type {keyof TForm & string} */ name) => {
+            const list = () => /** @type {import('../core/items.js').Item[]} */ (form[name] ?? [])
+            const change = (/** @type {import('../core/items.js').Item[]} */ next) => {
+                form[name] = next
+                repeaterOf(room.value, name, form)?.change(next)
+            }
+
+            return {
+                get list() {
+                    return list()
+                },
+                add: (/** @type {Record<string, any>} */ item = {}) => change(listOps.add(list(), item)),
+                remove: (/** @type {string} */ key) => change(listOps.remove(list(), key)),
+                move: (/** @type {string} */ key, /** @type {number} */ to) => change(listOps.move(list(), key, to)),
+                field: (/** @type {string} */ key, /** @type {string} */ path) => ({ form, name, key, path }),
+            }
+        },
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
             transform = callback
@@ -187,9 +214,40 @@ function connect(element, binding) {
     // A form field outside the room is an ordinary input.
     if (!room || !field || bound.has(element) || !(field in room.config.fields || field in (room.config.labels ?? {}))) return
 
+    // An item's sub-field, in a repeater.
+    if (binding.value?.key !== undefined) {
+        const repeater = repeaterOf(room, field, form)
+
+        if (repeater) bound.set(element, repeater.attach(binding.value.key, binding.value.path, element))
+
+        return
+    }
+
     bound.set(element, room.config.fields[field] === 'text' && isTextInput(element)
         ? bindTextField(room, field, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => (form[field] = value) })
         : bindChoice(room, field, element, form))
+}
+
+/** @type {WeakMap<Room, Map<string, ReturnType<typeof bindItems>>>} each room's repeaters */
+const repeaters = new WeakMap()
+
+/**
+ * The binding of one repeater, made once per room and field.
+ *
+ * @param {Room | null} room
+ * @param {string} field
+ * @param {Record<string, any>} form
+ */
+function repeaterOf(room, field, form) {
+    if (!room || room.config.fields[field] !== 'items') return null
+
+    const known = repeaters.get(room) ?? new Map()
+
+    repeaters.set(room, known)
+
+    if (!known.has(field)) known.set(field, bindItems(room, field, { onValueChange: (list) => (form[field] = list) }))
+
+    return known.get(field) ?? null
 }
 
 /**

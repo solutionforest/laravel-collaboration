@@ -29,6 +29,7 @@ use SolutionForest\Collaboration\Rooms\RoomResolver;
 use SolutionForest\Collaboration\Saving\LiveSave;
 use SolutionForest\Collaboration\Support\Data;
 use SolutionForest\Collaboration\Support\Database;
+use SolutionForest\Collaboration\Support\Items;
 use SolutionForest\Collaboration\Support\ModelFields;
 use SolutionForest\Collaboration\Support\SaveLock;
 
@@ -64,6 +65,9 @@ final class Room implements Arrayable, JsonSerializable
     /** @var list<string> */
     private array $locks = [];
 
+    /** @var array<string, list<string>> each list's sub-fields that merge by character */
+    private array $texts = [];
+
     private PresenceMode $mode = PresenceMode::Editing;
 
     private ?string $locale = null;
@@ -87,6 +91,23 @@ final class Room implements Arrayable, JsonSerializable
     public function text(string ...$fields): self
     {
         return $this->add(FieldKind::Text, array_values($fields));
+    }
+
+    /**
+     * A repeater: a list of items people add, remove, reorder and edit
+     * together. Sub-fields named in `text` merge by character; the others
+     * take the latest change. Each item is saved with a `key`, so it keeps
+     * its identity from one save to the next.
+     *
+     *     ->items('lines', text: ['description'])
+     *
+     * @param  list<string>  $text
+     */
+    public function items(string $field, array $text = []): self
+    {
+        $this->texts[$field] = array_values($text);
+
+        return $this->add(FieldKind::Items, [$field]);
     }
 
     /** Fields edited in a rich text editor such as TipTap, kept as HTML or as JSON. */
@@ -426,7 +447,7 @@ final class Room implements Arrayable, JsonSerializable
         $values = $this->currentValues();
 
         return array_map(
-            static fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field]),
+            static fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field], $this->texts[$field] ?? []),
             array_keys($this->fields),
             $this->fields,
         );
@@ -549,6 +570,10 @@ final class Room implements Arrayable, JsonSerializable
             if ($this->fields[$field] === FieldKind::RichText && is_array($value) && ! $this->keepsJson($field)) {
                 $values[$field] = Html::fromDocument(Data::map($value));
             }
+
+            if ($this->fields[$field] === FieldKind::Items) {
+                $values[$field] = Items::asList($value);
+            }
         }
 
         return $values;
@@ -566,6 +591,7 @@ final class Room implements Arrayable, JsonSerializable
             $value instanceof DateTimeInterface => $value->format('Y-m-d H:i:s'),
             $kind === FieldKind::RichText && is_string($value) => Html::toDocument($value),
             $kind === FieldKind::RichText && $value === null => ['type' => 'doc', 'content' => [['type' => 'paragraph']]],
+            $kind === FieldKind::Items => Items::byKey($value),
             $kind === FieldKind::Text && $value !== null && ! is_string($value) => is_scalar($value) ? (string) $value : $value,
             default => $value,
         };

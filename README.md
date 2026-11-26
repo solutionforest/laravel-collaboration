@@ -352,6 +352,45 @@ Collaboration::room($post)
 
 A field cast to an enum only takes its cases, without `allowed`. A locked field is read-only for everybody else while somebody is in it, and says who: for fields where merging two people's changes makes no sense.
 
+### Repeaters
+
+A list of items people add, remove, reorder and edit together, kept as a JSON column:
+
+```php
+Collaboration::room($invoice)->items('lines', text: ['description']);   // or 'lines' => 'items' in $collaborative
+```
+
+Sub-fields named in `text` merge by character, with carets; the others take the latest change. Each item is saved with a `key`, so it keeps its identity from one save to the next.
+
+```jsx
+// React
+const lines = form.items('lines')
+
+{lines.list.map((line) => (
+    <div key={line.key}>
+        <input {...lines.field(line.key, 'description')} />
+        <button type="button" onClick={() => lines.remove(line.key)}>Remove</button>
+    </div>
+))}
+<button type="button" onClick={() => lines.add({ description: '', quantity: 1 })}>Add a line</button>
+```
+
+```vue
+<!-- Vue -->
+<div v-for="line in form.lines" :key="line.key">
+    <input v-model="line.description" v-collaborate="form.items('lines').field(line.key, 'description')">
+</div>
+<button type="button" @click="form.items('lines').add({ description: '' })">Add a line</button>
+```
+
+```blade
+{{-- Livewire --}}
+@foreach ($lines as $index => $line)
+    <input wire:model="lines.{{ $index }}.description" wire:key="{{ $line['key'] }}">
+@endforeach
+<button type="button" x-on:click="Collaboration.items($el, 'lines').add({ description: '' })">Add a line</button>
+```
+
 ### Create pages
 
 Before a record exists there is nothing to merge yet, but people can still see who else is creating one:
