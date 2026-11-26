@@ -69,6 +69,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+      - name: The archive Composer installs carries the browser side
+        run: |
+          git archive HEAD > /tmp/package.tar
+          for file in package.json resources/js/index.js resources/js/react/index.js resources/js/vue/index.js resources/dist/livewire.js; do
+            tar -tf /tmp/package.tar | grep -qx "$file" || { echo "$file is missing from the package"; exit 1; }
+          done
+
       - name: The Livewire script is built from the sources
         run: npm run build && git diff --exit-code -- resources/dist
 
