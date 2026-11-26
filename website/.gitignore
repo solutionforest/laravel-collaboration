@@ -1,0 +1,6 @@
+node_modules
+guide
+public/media
+.vitepress/cache
+.vitepress/dist
+.vitepress/pages.json

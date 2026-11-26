@@ -4,7 +4,7 @@ import globals from 'globals'
 /** Lint rules for the browser code and its tests: `npm run lint`. */
 export default [
     {
-        ignores: ['resources/dist/**', 'node_modules/**', 'vendor/**', 'demo/vendor/**', 'demo/node_modules/**', 'demo/public/**'],
+        ignores: ['resources/dist/**', 'node_modules/**', 'vendor/**', 'demo/vendor/**', 'demo/node_modules/**', 'demo/public/**', 'website/node_modules/**', 'website/.vitepress/cache/**', 'website/.vitepress/dist/**'],
     },
     js.configs.recommended,
     {
@@ -27,7 +27,7 @@ export default [
         },
     },
     {
-        files: ['tests/js/**', 'demo/tests/**', 'demo/scripts/**', 'vite.config.js', 'eslint.config.js'],
+        files: ['tests/js/**', 'demo/tests/**', 'demo/scripts/**', 'website/scripts/**', 'website/.vitepress/**', 'vite.config.js', 'vite.editor.config.js', 'eslint.config.js'],
         languageOptions: { globals: { ...globals.node, ...globals.browser } },
         rules: { 'no-console': 'off', 'no-shadow': 'off' },
     },
