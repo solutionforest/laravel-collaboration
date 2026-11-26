@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/). Until 1.0.0, a minor version may include breaking changes; they are listed under **Changed**.
 
+## [0.2.2] - 2026-11-26
+
+### Fixed
+
+- **The package as Composer installs it now includes its browser side.** Releases until 0.2.1 left `resources/js` and `package.json` out of the archive, so `npm install ./vendor/solutionforest/laravel-collaboration` found nothing to install after `composer require`.
+
 ## [0.2.1] - 2026-11-26
 
 ### Added
@@ -42,6 +48,7 @@ All notable changes to this package are documented here. The format follows [Kee
 - **Adapters:** Livewire, Inertia + React and Inertia + Vue, with TypeScript declarations.
 - **Hooks for integrations,** used by filament-collaboration.
 
+[0.2.2]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.2.2
 [0.2.1]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.2.1
 [0.2.0]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.2.0
 [0.1.0]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.1.0
