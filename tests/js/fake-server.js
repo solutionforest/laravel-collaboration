@@ -41,6 +41,7 @@ export class FakeServer {
             mode: 'editing',
             fields: Object.fromEntries(Object.entries(this.state.fields).map(([field, value]) => [field, value.k])),
             labels: {},
+            locks: this.locks ?? [],
             draft: 'draft',
             input: '_collaboration',
             interval: 50,

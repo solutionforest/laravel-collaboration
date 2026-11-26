@@ -22,7 +22,7 @@ final readonly class RoomAuthorizer implements AuthorizesRooms
     {
         $user = $context->currentUser();
 
-        if (! $context->belongsTo($user) || $context->model === null || $context->key === null) {
+        if ($user === null || ! $context->belongsTo($user) || $context->model === null || $context->key === null) {
             return RoomAccess::denied();
         }
 

@@ -20,7 +20,7 @@ use SolutionForest\Collaboration\Room;
  *
  *     public function save(): void
  *     {
- *         $this->saveCollaboratively(fn (array $values) => $this->post->update($values));
+ *         $this->saveCollaboratively();
  *     }
  */
 trait WithCollaboration
@@ -44,15 +44,13 @@ trait WithCollaboration
 
     /**
      * Saves the component's values for the room's fields, with everybody's
-     * latest edits in the live ones.
+     * latest edits in the live ones. Updates the record, unless you pass
+     * what to do with the values instead.
      *
-     * @template TResult
-     *
-     * @param  Closure(array<string, mixed>): TResult  $persist
+     * @param  (Closure(array<string, mixed>): mixed)|null  $persist
      * @param  string|null  $statePath  where the fields are, such as `form` for a Livewire form object
-     * @return TResult
      */
-    protected function saveCollaboratively(Closure $persist, ?string $statePath = null): mixed
+    protected function saveCollaboratively(?Closure $persist = null, ?string $statePath = null): mixed
     {
         $room = $this->collaborationRoom();
         $values = [];
@@ -61,6 +59,8 @@ trait WithCollaboration
             $values[$field] = data_get($this, $statePath === null ? $field : "{$statePath}.{$field}");
         }
 
-        return $room->save($values, $persist, $this->collaborationSync);
+        return $persist === null
+            ? $room->update($values, $this->collaborationSync)
+            : $room->save($values, $persist, $this->collaborationSync);
     }
 }

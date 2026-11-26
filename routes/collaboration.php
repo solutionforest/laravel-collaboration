@@ -7,11 +7,13 @@ use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
 use SolutionForest\Collaboration\Http\Middleware\KeepSessionReadOnly;
+use SolutionForest\Collaboration\Support\Data;
 
-$path = Collaboration::config('path', '_collaboration');
+$path = Data::string(Collaboration::config('path'), '_collaboration');
+$middleware = Data::strings(Collaboration::config('middleware', ['web']));
 
 Route::post($path.'/sync', SyncController::class)
-    ->middleware([...(array) Collaboration::config('middleware', ['web']), KeepSessionReadOnly::class, 'throttle:collaboration'])
+    ->middleware([...$middleware, KeepSessionReadOnly::class, 'throttle:collaboration'])
     ->name('collaboration.sync');
 
 Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.livewire');

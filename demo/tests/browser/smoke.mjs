@@ -45,11 +45,52 @@ for (const [name, page] of all) {
 await expectEverywhere('text typed in React, Vue and Livewire merges', (page) => title(page).inputValue().then((value) => ['alice', 'bob', 'chloe'].every((name) => value.includes(name))), true)
 await expectEverywhere('and reads the same everywhere', (page) => title(page).inputValue(), await title(people.alice).inputValue())
 
+// Typing at human speed in React and Vue at the same moment loses no letter.
+await title(people.alice).click()
+await people.alice.keyboard.press('End')
+await title(people.bob).click()
+await people.bob.keyboard.press('Home')
+await Promise.all([people.alice.keyboard.type(' this spring', { delay: 90 }), people.bob.keyboard.type('Now open: ', { delay: 90 })])
+await expectEverywhere('typing at the same moment in React and Vue keeps every letter', (page) => title(page).inputValue().then((value) => value.startsWith('Now open: ') && value.endsWith(' this spring')), true)
+
 await people.bob.locator('select').selectOption('review')
+await people.bob.locator('select').blur()
 await expectEverywhere('a select changed in Vue shows everywhere', (page) => page.locator('select').inputValue(), 'review')
 
-await people.chloe.locator('input[type=checkbox]').check()
-await expectEverywhere('a checkbox ticked in Livewire shows everywhere', (page) => page.locator('input[type=checkbox]').isChecked(), true)
+await people.chloe.locator('input[type=checkbox]').first().check()
+await expectEverywhere('a checkbox ticked in Livewire shows everywhere', (page) => page.locator('input[type=checkbox]').first().isChecked(), true)
+
+const channels = (page) => page.locator('input[type=checkbox][value]:checked').evaluateAll((boxes) => boxes.map((box) => box.value).filter((value) => value !== 'on').join())
+
+await people.bob.locator('input[type=checkbox][value=email]').check()
+await expectEverywhere('a checkbox group ticked in Vue shows everywhere', channels, 'web,email')
+
+await people.chloe.locator('input[type=checkbox][value=sms]').check()
+await expectEverywhere('and in Livewire', channels, 'web,email,sms')
+
+await people.alice.locator('input[type=checkbox][value=web]').uncheck()
+await expectEverywhere('and in React', channels, 'email,sms')
+
+// The status is locked: while Alice is in it, nobody else can change it.
+await people.alice.locator('select').focus()
+await expectEverywhere('a locked field is read-only for the others', async (page) => page === people.alice ? true : page.locator('select').evaluate((select) => select.closest('[inert]') !== null), true)
+await people.alice.locator('select').blur()
+await expectEverywhere('and free again once she leaves it', (page) => page.locator('select').evaluate((select) => select.closest('[inert]') === null), true)
+
+// Ctrl+Z undoes only your own typing: Bob's words go, Chloe's stay.
+const summary = (page) => page.locator('textarea').inputValue()
+
+await people.bob.locator('textarea').click()
+await people.bob.keyboard.press('End')
+await people.bob.keyboard.type(' Bob wrote this.')
+await expectEverywhere('Bob\'s typing arrives', (page) => summary(page).then((value) => value.endsWith('Bob wrote this.')), true)
+await people.chloe.locator('textarea').click()
+await people.chloe.keyboard.press('Control+Home')
+await people.chloe.keyboard.type('Chloe: ')
+await expectEverywhere('then Chloe\'s', (page) => summary(page).then((value) => value.startsWith('Chloe: ')), true)
+await people.bob.locator('textarea').focus()
+await people.bob.keyboard.press('Control+z')
+await expectEverywhere('Ctrl+Z undoes Bob\'s words only', summary, 'Chloe: What changes for customers, and when.')
 
 await people.alice.locator('.ProseMirror').click()
 await people.alice.keyboard.press('Control+End')

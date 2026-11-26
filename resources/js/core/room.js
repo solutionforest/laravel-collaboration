@@ -49,6 +49,8 @@ export class Room {
     lastActive = Date.now()
     /** @type {ReturnType<typeof setTimeout> | null} */
     timer = null
+    /** @type {Set<string> | undefined} fields already warned about */
+    warned
     dueAt = 0
 
     /**
@@ -152,6 +154,7 @@ export class Room {
      * @returns {() => void}
      */
     bind(field, binding) {
+        this.warnAboutUnknown(field)
         this.bindings.set(field, binding)
         this.remember()
 
@@ -203,6 +206,32 @@ export class Room {
     /** @param {string} field */
     peopleIn(field) {
         return this.people.filter((person) => person.field === field && !person.idle)
+    }
+
+    /**
+     * Who holds a locked field (`->lock()` in PHP) right now, if anybody else does.
+     *
+     * @param {string} field
+     * @returns {Person | null}
+     */
+    lockedBy(field) {
+        if (!this.config.locks?.includes(field) || this.stopped) return null
+
+        return this.people.find((person) => person.field === field && !person.idle && !person.self && person.mode === 'editing') ?? null
+    }
+
+    /**
+     * A field the room does not have is most often a typo: say so, once.
+     *
+     * @param {string} field
+     */
+    warnAboutUnknown(field) {
+        const known = [...new Set([...Object.keys(this.config.fields), ...Object.keys(this.config.labels ?? {})])]
+
+        if (known.includes(field) || this.warned?.has(field)) return
+
+        this.warned = (this.warned ?? new Set()).add(field)
+        console.warn(`[collaboration] "${field}" is not a field of this room, so it is not shared. Its fields are: ${known.join(', ')}.`)
     }
 
     /**

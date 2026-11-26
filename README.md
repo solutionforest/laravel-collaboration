@@ -8,15 +8,40 @@ It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with 
 
 <sub>Alice in React, Bob in Vue and Chloe in Livewire, editing one article. Recorded from the [demo](#run-the-demo). [Watch as MP4](docs/media/demo.mp4).</sub>
 
-**Contents:** [What you get](#what-you-get) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [Run the demo](#run-the-demo) · [Testing](#testing)
+**Contents:** [What you get](#what-you-get) · [Compared with filament-collaboration](#compared-with-filament-collaboration) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [Run the demo](#run-the-demo) · [Testing](#testing)
 
 ## What you get
 
-- **Live fields.** Text merges character by character, rich text keeps its formatting, and selects and checkboxes take the latest choice.
+- **Live fields.** Text merges character by character, rich text keeps its formatting, and selects, checkboxes, checkbox groups, radios and dates take the latest choice.
+- **Your own undo.** Ctrl+Z undoes your typing, never a colleague's.
+- **Locks where merging makes no sense.** A locked field is read-only for everybody else while somebody is in it.
 - **Presence.** Faces of everybody on the record, who is in which field, and their carets and selections.
 - **Saves that lose nothing.** Whoever saves, the record gets everybody's edits, including keystrokes that hadn't synced yet.
 - **Your authorisation.** People join through your policies, and every sync checks again.
 - **No new infrastructure.** Your database and cache by default. Optionally Redis for presence and Reverb for pushes.
+
+## Compared with filament-collaboration
+
+Both packages share one engine. filament-collaboration is built on this package, which is why everything about drafts, merging and presence matches. These are the features each package's own UI offers:
+
+| | filament-collaboration | This package |
+| --- | --- | --- |
+| Text, textarea: merged by character, carets | ✓ | ✓ |
+| Rich text (TipTap): merged, carets | ✓ | ✓ |
+| Select, checkbox, radio, toggle: latest wins | ✓ | ✓ |
+| Checkbox groups and multiple selects | ✓ | ✓ |
+| Each person's own undo | ✓ | ✓ |
+| Lock a field while somebody is in it | ✓ | ✓ |
+| Presence: faces, who is in which field, sync status | ✓ | ✓ |
+| Saving everybody's edits, deleted-record notice, permission changes | ✓ | ✓ |
+| Values limited to an enum, one draft per language | ✓ | ✓ |
+| Repeaters and builders (lists of items) | ✓ | engine only, no binding yet |
+| Comments and @mentions | ✓ | storage only, no UI yet |
+| Version history and restoring a draft | ✓ | storage only, no UI yet |
+| Choosing between versions when a save conflicts | ✓ | the latest save wins |
+| Images uploaded into rich text while editing | ✓ | not yet |
+| Who is on which record, in a table | ✓ | not yet |
+| Follow a colleague from field to field | ✓ | not yet |
 
 ## Requirements
 
@@ -64,19 +89,24 @@ It imports React, Vue, Inertia and TipTap from your app, so it adds nothing to y
 
 ```php
 use SolutionForest\Collaboration\Concerns\Collaborative;
+use SolutionForest\Collaboration\Enums\FieldKind;
 
 class Post extends Model
 {
     use Collaborative;
 
     protected array $collaborative = [
-        'title',                // text, merged by character
+        'title',                            // text, merged by character
         'summary',
-        'body' => 'rich',       // TipTap, kept as HTML or JSON, like the column
-        'status' => 'value',    // select, checkbox, radio: the latest choice wins
+        'body' => FieldKind::RichText,      // TipTap, kept as HTML or JSON, like the column
+        'status' => FieldKind::Value,       // select, radio: the latest choice wins
+        'published_at',                     // cast to a date, so a value
+        'channels',                         // cast to an array: a checkbox group
     ];
 }
 ```
+
+A name alone takes its kind from the model's casts: booleans, numbers, dates and enums are values, everything else is text. Kinds may also be written as strings (`'rich'`, `'value'`), but `FieldKind` cases can't be misspelt.
 
 People join a record's room when your `PostPolicy` allows `update`, or `view` for a read-only room.
 
@@ -104,7 +134,7 @@ class EditPost extends Component
 
     public function save(): void
     {
-        $this->saveCollaboratively(fn (array $values) => $this->post->update($values));
+        $this->saveCollaboratively();   // updates the post with everybody's edits
     }
 }
 ```
@@ -136,7 +166,7 @@ public function edit(Post $post)
 
 public function update(Request $request, Post $post)
 {
-    $post->collaboration()->save($request->validate([...]), fn (array $values) => $post->update($values));
+    $post->collaboration()->update($request->validate([...]));
 
     return back();
 }
@@ -163,7 +193,13 @@ export default function Edit({ post, collaboration }) {
 }
 ```
 
-`useCollaborativeForm()` is Inertia's `useForm()` with collaboration added. Everything else (`errors`, `processing`, `put()`) works as usual.
+`useCollaborativeForm()` is Inertia's `useForm()` with collaboration added. Everything else works as usual: `errors`, `processing`, `put()`, and `transform()`, which runs before the live edits are added.
+
+- **Radios and checkbox groups:** pass the value each one stands for: `<input type="radio" {...form.field('status', { value: 'draft' })} />`. When the field's value is a list, `<input type="checkbox" {...form.field('channels', { value: 'email' })} />` adds and removes `email`.
+- **Dates, numbers, emails:** inputs without a caret are shared as a whole value when they change.
+- **Custom inputs:** `onChange` also takes a plain value, so `form.field('tags').onChange(['a', 'b'])` works.
+- **`form.collaboration`** holds `room`, `people`, `status`, `peopleIn(field)` and `isLive(field)`.
+- **Presence without a form:** `useCollaboration(props.collaboration)` returns the same, and `<Avatars collaboration={...} />` takes it.
 
 </details>
 
@@ -190,8 +226,8 @@ const form = useCollaborativeForm(() => props.collaboration, {
     <form @submit.prevent="form.put(`/posts/${post.id}`)">
         <Avatars :form="form" />
 
-        <input v-model="form.title" v-collaborate:title="form">
-        <select v-model="form.status" v-collaborate:status="form">...</select>
+        <input v-model="form.title" v-collaborate="form.field('title')">
+        <select v-model="form.status" v-collaborate="form.field('status')">...</select>
         <CollaborativeEditor :form="form" field="body" />
 
         <button>Save</button>
@@ -199,17 +235,23 @@ const form = useCollaborativeForm(() => props.collaboration, {
 </template>
 ```
 
+`v-collaborate` works on inputs, textareas, selects, checkboxes, checkbox groups (`v-model` on an array) and radios. `form.field()` only accepts the form's own field names, so a typo is a type error; `v-collaborate:title="form"` works too. `form.collaboration` holds `room`, `people`, `status`, `peopleIn(field)` and `isLive(field)`, and `useCollaboration()` gives you the same without a form.
+
 </details>
+
+**TypeScript:** every entry point ships with type declarations. `form.field()` only accepts the form's own field names.
 
 | | Livewire | React | Vue |
 | --- | --- | --- | --- |
 | Join the room | `<x-collaboration::room>` | `useCollaborativeForm()` | `useCollaborativeForm()` |
-| Text, select, checkbox | `wire:model` | `{...form.field('title')}` | `v-collaborate:title="form"` |
+| Text, select, checkbox, radio, group | `wire:model` | `{...form.field('title')}` | `v-collaborate="form.field('title')"` |
+| Your own undo | built in | built in | built in |
+| Locked fields | built in | built in | built in |
 | Rich text | TipTap + `Collaborative` | `<CollaborativeEditor>` | `<CollaborativeEditor>` |
 | Faces | built in | `<Avatars>` | `<Avatars>` |
 | Who is in a field | carets | `<FieldPeople>` | `<FieldPeople>` |
 | Sync status | built in | `<Status>` | `<Status>` |
-| Save | `saveCollaboratively()` | `$room->save()` | `$room->save()` |
+| Save | `saveCollaboratively()` | `$room->update()` | `$room->update()` |
 
 ![The same moment in React, Vue and Livewire](docs/media/three-stacks.png)
 
@@ -261,10 +303,18 @@ bindTextField(room, 'title', document.querySelector('#title'))
 
 ## Saving
 
-`save()` takes what the form submitted and a closure that writes to the database:
+`update()` saves the record with what the form submitted and everybody's latest edits:
 
 ```php
-$post->collaboration()->save($validated, fn (array $values) => $post->update($values));
+$post->collaboration()->update($validated);
+```
+
+When saving is more than an update, use `save()` with a closure. It receives the merged values:
+
+```php
+$post->collaboration()->save($validated, function (array $values) use ($post) {
+    $post->fill($values)->publish();
+});
 ```
 
 Live fields come from the shared draft, which holds everybody's edits up to this moment, so a stale form can't overwrite someone else's typing. Other fields are saved as submitted. Everybody in the room then hears that the record was saved, and by whom.
@@ -290,10 +340,25 @@ Collaboration::room($post)
     ->text('title', 'summary')
     ->rich('body')
     ->value('status', allowed: PostStatus::class)   // refuse values that are not cases
+    ->lock('price', 'slug')                          // one person at a time
     ->labels(['body' => 'Article'])                  // "Alice is in Article"
     ->locale('fr')                                   // one draft per language
     ->viewing();                                     // watch without editing
 ```
+
+A field cast to an enum only takes its cases, without `allowed`. A locked field is read-only for everybody else while somebody is in it, and says who: for fields where merging two people's changes makes no sense.
+
+### Typos are caught
+
+Everything that can be checked is, as early as possible:
+
+| Mistake | Caught |
+| --- | --- |
+| `'body' => 'richtext'` | at once: *[richtext] is not a kind of field, for [body]. … Did you mean [rich]?* |
+| `->text('titel')` | when the page renders, with `APP_DEBUG` on: *[Post] has no attribute [titel] to collaborate on. Did you mean [title]?* |
+| `form.field('titel')`, `<FieldPeople field="titel">`, `<CollaborativeEditor field="bdy">` | by TypeScript, against the form's own fields |
+| A field the room doesn't have, bound in the browser | once, in the console: *"titel" is not a field of this room* |
+| A value outside an enum or `allowed` | refused by the server |
 
 ## Configuration
 
@@ -397,8 +462,9 @@ Open <http://localhost:8000>, then pick a person and a stack. Use a private wind
 composer install && npm install
 
 composer test          # Pest: the merge engine, sync, saving, Livewire
-npm test               # node:test: the merge engine and the browser client
+npm test               # node:test: the merge engine, the browser client, the React adapter
 npm run lint
+npm run typecheck      # the type declarations, against the README's code
 
 cd demo && php artisan migrate:fresh --seed && php artisan serve --port=8123 &
 node tests/browser/smoke.mjs    # three real browsers, one per stack

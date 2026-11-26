@@ -123,3 +123,16 @@ it('treats a save from a page that was not live as the latest change', function 
         ->and($alice->sync()->json('operations'))->not->toBeEmpty()
         ->and($alice->value('title'))->toBe('Overwritten');
 });
+
+it('updates the record in one call', function (): void {
+    $alice = new Browser($this, $this->alice, $this->post->collaboration());
+    $alice->sync();
+    $alice->type('title', 'Updated in one call')->type('status', 'published');
+
+    $this->actingAs($this->alice);
+
+    expect($this->post->collaboration()->update(['title' => 'Hello', 'status' => 'published'], $alice->payload()))->toBeTrue()
+        ->and($this->post->fresh())
+        ->title->toBe('Updated in one call')
+        ->status->toBe('published');
+});

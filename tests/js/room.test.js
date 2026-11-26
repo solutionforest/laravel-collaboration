@@ -194,3 +194,88 @@ test('shows where others\' carets are', async () => {
     assert.deepEqual(alice.carets('title').map(({ anchor, head, person }) => [person.name, anchor, head]), [['Bob', 2, 4]])
     assert.deepEqual(alice.peopleIn('title').map((person) => person.name), ['Bob'])
 })
+
+/** @param {HTMLElement} element @param {string} key */
+const press = (element, key, options = {}) => element.dispatchEvent(new window.KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, cancelable: true, ...options }))
+
+test('Ctrl+Z undoes your own typing, never a colleague\'s', async () => {
+    const fake = server()
+    const alice = await join(fake, 1, 'Alice')
+    const bob = await join(fake, 2, 'Bob')
+    const input = document.body.appendChild(document.createElement('input'))
+    const seen = []
+
+    bindTextField(alice, 'title', input, { onValueChange: (value) => seen.push(value) })
+    input.focus()
+    input.value = 'Hello world'
+    input.setSelectionRange(11, 11)
+    input.dispatchEvent(new window.Event('input'))
+
+    await until(() => bob.value('title') === 'Hello world')
+    bob.change('title', 'Oh, Hello world', 4)
+    await until(() => input.value === 'Oh, Hello world')
+
+    press(input, 'z')
+    assert.equal(input.value, 'Oh, Hello')
+    assert.equal(seen.at(-1), 'Oh, Hello')
+    await until(() => bob.value('title') === 'Oh, Hello')
+
+    press(input, 'z', { shiftKey: true })
+    assert.equal(input.value, 'Oh, Hello world')
+})
+
+test('a group of checkboxes shares the list of ticked values', async () => {
+    const fake = new FakeServer({ clock: 0, fields: { title: { k: 'text', r: [] }, channels: { k: 'value', v: ['web'], at: [0, 0] } } })
+
+    fake.seed('title', 'Hello')
+
+    const alice = await join(fake, 1, 'Alice')
+    const bob = await join(fake, 2, 'Bob')
+    const boxes = ['web', 'email', 'sms'].map((value) => Object.assign(document.body.appendChild(document.createElement('input')), { type: 'checkbox', value }))
+
+    bindValueField(alice, 'channels', boxes)
+    assert.deepEqual(boxes.map((box) => box.checked), [true, false, false])
+
+    boxes[2].checked = true
+    boxes[2].dispatchEvent(new window.Event('change'))
+    await until(() => JSON.stringify(bob.value('channels')) === '["web","sms"]')
+
+    bob.change('channels', ['email'])
+    await until(() => boxes.map((box) => box.checked).join() === 'false,true,false')
+})
+
+test('a locked field is read-only while somebody else is in it', async () => {
+    const fake = server()
+
+    fake.locks = ['status']
+
+    const alice = await join(fake, 1, 'Alice')
+    const bob = await join(fake, 2, 'Bob')
+    const select = document.body.appendChild(document.createElement('select'))
+
+    select.innerHTML = '<option value="draft">Draft</option><option value="published">Published</option>'
+    bindValueField(alice, 'status', select)
+    assert.equal(select.inert, false)
+
+    bob.focus('status')
+    await until(() => select.inert === true)
+    assert.equal(select.title, 'Bob is editing this field')
+
+    bob.focus(null)
+    await until(() => select.inert === false)
+})
+
+test('a field the room does not have is reported once, as a likely typo', async () => {
+    const fake = server()
+    const alice = await join(fake, 1, 'Alice')
+    const warnings = []
+    const warn = console.warn
+
+    console.warn = (message) => warnings.push(message)
+    alice.bind('titel', {})
+    alice.bind('titel', {})
+    console.warn = warn
+
+    assert.equal(warnings.length, 1)
+    assert.match(warnings[0], /"titel" is not a field of this room/)
+})
