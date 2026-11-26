@@ -218,3 +218,32 @@ export interface Repeater<TFieldProps> {
     /** What binds one item's sub-field input. */
     field(key: string, path: string): TFieldProps
 }
+
+/** A comment on a record, or on one of its fields. */
+export interface RecordComment {
+    id: number
+    field: string | null
+    body: string
+    /** The body, escaped, with mentions marked. */
+    html: string
+    author: string
+    mine: boolean
+    mentions: string[]
+    at: string
+    resolved: boolean
+    resolvedBy: string | null
+}
+
+/** What a comments hook gives an app's own UI. */
+export interface CommentsState<TList> {
+    comments: TList
+    mentionable: string[] | { value: string[] }
+    canWrite: boolean | { value: boolean }
+    /** Mention people as `@Name`. */
+    post(body: string, field?: string | null): Promise<RecordComment[]> | undefined
+    resolve(id: number): Promise<RecordComment[]> | undefined
+    reopen(id: number): Promise<RecordComment[]> | undefined
+}
+
+/** Draws a record's comments into an element; returns what removes them. */
+export function renderComments(element: HTMLElement, room: Room, options?: { field?: string | null }): () => void

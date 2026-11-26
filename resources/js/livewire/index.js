@@ -6,6 +6,7 @@ import { listOps, toList } from '../core/items.js'
 import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
+import { renderComments } from '../ui/comments.js'
 
 /**
  * The Livewire adapter. `<x-collaboration::room>` renders an element with the
@@ -96,6 +97,14 @@ class LivewireRoom {
                 : bindValueField(this.room, field, /** @type {any} */ (elements.length > 1 ? elements : first), { onValueChange })
 
             this.bound.set(field, { elements, unbind })
+        }
+
+        // `<x-collaboration::comments>` in the component.
+        for (const element of this.component.querySelectorAll(/** @type {'div'} */ ('[data-collab-comments]'))) {
+            if (element.dataset.collabMounted) continue
+
+            element.dataset.collabMounted = '1'
+            renderComments(element, this.room, element.dataset.field ? { field: element.dataset.field } : {})
         }
 
         this.publish()

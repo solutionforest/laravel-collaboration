@@ -34,5 +34,13 @@ return [
         'keep_mine' => 'Keep mine',
         'use_theirs' => 'Use the version from :name',
         'more' => ':count more',
+        'someone' => 'Someone',
+        'no_comments' => 'No comments yet.',
+        'comment_placeholder' => 'Write a comment. Mention people with @.',
+        'post' => 'Comment',
+        'resolve' => 'Resolve',
+        'reopen' => 'Reopen',
+        'resolved_by' => 'Resolved by :name',
+        'resolved_count' => 'Resolved (:count)',
     ],
 ];

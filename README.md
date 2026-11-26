@@ -401,6 +401,27 @@ Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post
 
 The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
 
+### Comments and @mentions
+
+People can comment on a record, or on one field of it, and resolve comments when they're done:
+
+```jsx
+<Comments form={form} />                 // React; Vue: <Comments :form="form" />
+<Comments form={form} field="title" />   // only the title's comments
+```
+
+```blade
+<x-collaboration::comments />            {{-- Livewire, inside the component --}}
+```
+
+`useComments(form)` gives the list and `post()`, `resolve()` and `reopen()` for your own UI. Say who may be mentioned, and send your own notifications from the `CommentPosted` event:
+
+```php
+Collaboration::mentionUsersUsing(fn (Post $post) => $post->team->users);
+
+Event::listen(CommentPosted::class, fn (CommentPosted $event) => /* notify each of $event->comment->mentions */);
+```
+
 ### Following a colleague
 
 Click somebody's face in the avatars to follow them: the page brings whichever field they are in into view as they move. Click again, or do anything yourself, to stop. In code: `form.collaboration.follow(person.client)`.

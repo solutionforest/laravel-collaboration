@@ -47,6 +47,9 @@ final class Collaboration
     /** @var (Closure(): ?Authenticatable)|null */
     public static ?Closure $userResolver = null;
 
+    /** @var (Closure(Model): iterable<Authenticatable>)|null */
+    public static ?Closure $mentionableResolver = null;
+
     /** @var (Closure(string, mixed): mixed)|null */
     public static ?Closure $configResolver = null;
 
@@ -149,6 +152,26 @@ final class Collaboration
         return self::$configResolver === null ? config("collaboration.{$key}", $default) : (self::$configResolver)($key, $default);
     }
 
+    /**
+     * Who may be @mentioned in a record's comments. Nobody, until you say:
+     *
+     *     Collaboration::mentionUsersUsing(fn (Post $post) => $post->team->users);
+     *
+     * Mentions arrive in the `CommentPosted` event, for your notifications.
+     *
+     * @param  Closure(Model $record): iterable<Authenticatable>  $callback
+     */
+    public static function mentionUsersUsing(Closure $callback): void
+    {
+        self::$mentionableResolver = $callback;
+    }
+
+    /** @return iterable<Authenticatable> */
+    public static function mentionable(Model $record): iterable
+    {
+        return self::$mentionableResolver === null ? [] : (self::$mentionableResolver)($record);
+    }
+
     /** Keep your own tables, for example after publishing and changing the migration. */
     public static function ignoreMigrations(): void
     {
@@ -242,6 +265,7 @@ final class Collaboration
         self::$runsMigrations = true;
         self::$userResolver = null;
         self::$configResolver = null;
+        self::$mentionableResolver = null;
         self::$colors = Palette::DEFAULT;
         self::$userNameResolver = null;
         self::$userAvatarResolver = null;

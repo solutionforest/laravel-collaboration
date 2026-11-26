@@ -13,6 +13,14 @@ button.collab-avatar, .collab-avatar[role=button] { padding: 0; cursor: pointer;
 .collab-avatar[data-following] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; color: #4f46e5; }
 .collab-field-people { display: inline-flex; gap: 4px; }
 .collab-field-person { padding: 1px 6px; border-radius: 9999px; color: #fff; font: 600 11px/1.5 system-ui, sans-serif; }
+.collab-comments { display: grid; gap: 10px; font: 14px/1.5 system-ui, sans-serif; color: #0f172a; }
+.collab-comment { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+.collab-comment[data-resolved] { opacity: .6; }
+.collab-comment button, .collab-comment-form button { margin-top: 6px; padding: 2px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+.collab-comment-meta, .collab-comments-empty { margin: 0 0 4px; color: #64748b; font-size: 12px; }
+.collab-comment-form textarea { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
+.collab-comment-mentions { display: flex; flex-wrap: wrap; gap: 4px; }
+.collab-mention { padding: 0 3px; border-radius: 4px; background: #e0e7ff; color: #3730a3; font-weight: 600; }
 .collab-conflicts { display: grid; gap: 8px; }
 .collab-conflict { padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 8px; background: #fffbeb; font: 14px/1.5 system-ui, sans-serif; color: #78350f; }
 .collab-conflict p { margin: 0 0 6px; }

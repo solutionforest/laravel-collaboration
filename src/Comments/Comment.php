@@ -62,7 +62,7 @@ final readonly class Comment
 
         foreach ($this->mentions as $mention) {
             $name = e('@'.$mention->name);
-            $html = str_replace($name, '<span class="fi-collab-mention">'.$name.'</span>', $html);
+            $html = str_replace($name, '<span class="collab-mention">'.$name.'</span>', $html);
         }
 
         return nl2br($html, false);

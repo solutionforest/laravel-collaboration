@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use SolutionForest\Collaboration\Collaboration;
+use SolutionForest\Collaboration\Http\Controllers\CommentController;
 use SolutionForest\Collaboration\Http\Controllers\PresenceController;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
@@ -24,4 +25,8 @@ Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.l
 Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->name('collaboration.')->group(function (): void {
     Route::post('values', ValuesController::class)->name('values');
     Route::post('presence', PresenceController::class)->name('presence');
+    Route::post('comments', [CommentController::class, 'index'])->name('comments');
+    Route::post('comments/store', [CommentController::class, 'store'])->name('comments.store');
+    Route::post('comments/resolve', [CommentController::class, 'resolve'])->name('comments.resolve');
+    Route::post('comments/reopen', [CommentController::class, 'reopen'])->name('comments.reopen');
 });

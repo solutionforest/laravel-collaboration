@@ -1,13 +1,15 @@
 import { router, useForm } from '@inertiajs/vue3'
-import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { bindItems } from '../bindings/items.js'
+import { commentsOf } from '../core/comments.js'
 import { FormMemory } from '../core/form-memory.js'
 import { listOps, toList } from '../core/items.js'
 import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
+import { renderComments } from '../ui/comments.js'
 import { avatarsOf, peopleIn } from '../ui/people.js'
 import { addStyles } from '../ui/styles.js'
 
@@ -434,5 +436,58 @@ export const RecordPeople = defineComponent({
                 more ? h('span', { class: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
             ])
         }
+    },
+})
+
+/**
+ * A record's comments, for an app's own UI. `<Comments>` is the ready-made one.
+ *
+ *     const { comments, post, resolve } = useComments(form)
+ *
+ * @param {{collaboration: {room: any}}} form
+ */
+export function useComments(form) {
+    const room = unref(form.collaboration.room)
+    const comments = room ? commentsOf(room) : null
+    const list = ref(comments?.list ?? [])
+    const mentionable = ref(comments?.mentionable ?? [])
+    const canWrite = ref(comments?.canWrite ?? false)
+
+    const stop = comments?.on('change', () => {
+        list.value = [...comments.list]
+        mentionable.value = [...comments.mentionable]
+        canWrite.value = comments.canWrite
+    })
+
+    onScopeDispose(() => stop?.())
+
+    return {
+        comments: list,
+        mentionable,
+        canWrite,
+        post: (/** @type {string} */ body, /** @type {string | null} */ field = null) => comments?.post(body, field),
+        resolve: (/** @type {number} */ id) => comments?.resolve(id),
+        reopen: (/** @type {number} */ id) => comments?.reopen(id),
+    }
+}
+
+/** A record's comments, with a box to write one: `<Comments :form="form" />`, or `field="title"`. */
+export const Comments = defineComponent({
+    name: 'CollaborationComments',
+    props: { form: { type: Object, required: true }, field: { type: String, default: undefined } },
+    setup(props) {
+        const element = ref(/** @type {HTMLElement | null} */ (null))
+        /** @type {(() => void) | undefined} */
+        let remove
+
+        onMounted(() => {
+            const room = unref(props.form.collaboration.room)
+
+            if (room && element.value) remove = renderComments(element.value, room, { field: props.field })
+        })
+
+        onBeforeUnmount(() => remove?.())
+
+        return () => h('div', { ref: element })
     },
 })

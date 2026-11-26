@@ -1,6 +1,6 @@
 import type { InertiaForm } from '@inertiajs/vue3'
 import type { DefineComponent, Directive, Ref, ShallowRef } from 'vue'
-import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { CommentsState, Conflict, Person, RecordComment, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -63,3 +63,8 @@ export const Conflicts: DefineComponent<{ form: { collaboration: unknown } }>
 export function useRecordPresence(config: () => RecordPresenceConfig | null): { people: Ref<Record<string, RecordPerson[]>>, peopleOn(key: string | number): RecordPerson[] }
 
 export const RecordPeople: DefineComponent<{ presence: { peopleOn(key: string | number): RecordPerson[] }, record: string | number, limit?: number }>
+
+/** A record's comments, for an app's own UI. */
+export function useComments(form: { collaboration: { room: unknown } }): CommentsState<Ref<RecordComment[]>>
+
+export const Comments: DefineComponent<{ form: { collaboration: unknown }, field?: string }>
