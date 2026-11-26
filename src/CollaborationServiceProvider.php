@@ -7,6 +7,7 @@ namespace SolutionForest\Collaboration;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Broadcast;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use SolutionForest\Collaboration\Broadcasting\RoomChanged;
 use SolutionForest\Collaboration\Broadcasting\RoomNotifier;
+use SolutionForest\Collaboration\Commands\InstallCommand;
 use SolutionForest\Collaboration\Commands\PruneUploadsCommand;
 use SolutionForest\Collaboration\Contracts\AuthorizesRooms;
 use SolutionForest\Collaboration\Contracts\PresenceRepository;
@@ -45,6 +47,13 @@ final class CollaborationServiceProvider extends ServiceProvider
     {
         if (Collaboration::$runsMigrations) {
             $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+            // The comments table, only for apps that turn comments on.
+            $this->callAfterResolving('migrator', static function (Migrator $migrator): void {
+                if (Collaboration::hasFeature(Features::COMMENTS)) {
+                    $migrator->path(__DIR__.'/../database/migrations/features/comments');
+                }
+            });
         }
 
         $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'collaboration-migrations');
@@ -76,6 +85,13 @@ final class CollaborationServiceProvider extends ServiceProvider
 
         if (Collaboration::$registersRoutes && ! $this->app->routesAreCached()) {
             $this->loadRoutesFrom(__DIR__.'/../routes/collaboration.php');
+
+            // Once the app has booted, so features turned on in its own providers count.
+            $this->app->booted(function (): void {
+                if (Collaboration::$registersRoutes && ! $this->app->routesAreCached()) {
+                    require __DIR__.'/../routes/features.php';
+                }
+            });
         }
     }
 
@@ -147,7 +163,7 @@ final class CollaborationServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->commands([PruneUploadsCommand::class]);
+        $this->commands([InstallCommand::class, PruneUploadsCommand::class]);
 
         // Images inserted into drafts that were never saved.
         $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {

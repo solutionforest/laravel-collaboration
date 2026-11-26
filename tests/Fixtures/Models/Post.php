@@ -10,6 +10,7 @@ use SolutionForest\Collaboration\Concerns\Collaborative;
 /**
  * @property string $title
  * @property string $status
+ * @property string|null $category
  */
 final class Post extends Model
 {
@@ -22,6 +23,6 @@ final class Post extends Model
 
     protected function casts(): array
     {
-        return ['content' => 'array', 'featured' => 'boolean'];
+        return ['content' => 'array', 'lines' => 'array', 'featured' => 'boolean'];
     }
 }

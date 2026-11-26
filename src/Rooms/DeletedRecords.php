@@ -71,7 +71,7 @@ final readonly class DeletedRecords
 
         if (! Database::table('documents')->where('room', $room)->orWhere('parent_room', $room)->exists() && $this->presence->inRoom($room) === []) {
             // Nobody is on it and there is no draft, but there can be comments.
-            if (! $isSoft) {
+            if (! $isSoft && Collaboration::storesComments()) {
                 $record->getConnection()->afterCommit(fn () => $this->comments->forget($room));
             }
 
@@ -152,7 +152,10 @@ final readonly class DeletedRecords
     {
         // The record's draft and each of its languages', with the images only they had;
         // the record's own images are the application's to delete.
-        $this->comments->forget($room);
+        if (Collaboration::storesComments()) {
+            $this->comments->forget($room);
+        }
+
         $documents = Database::table('documents')->where('room', $room)->orWhere('parent_room', $room)->get(['id', 'room']);
 
         foreach ($documents as $document) {

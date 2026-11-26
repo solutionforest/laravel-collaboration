@@ -11,16 +11,37 @@ final class ScriptController
 {
     public const PATH = __DIR__.'/../../../resources/dist/livewire.js';
 
+    public const EDITOR = __DIR__.'/../../../resources/dist/livewire-editor.js';
+
+    public const FEATURES = __DIR__.'/../../../resources/dist/livewire-features.js';
+
     public function __invoke(): BinaryFileResponse
     {
-        return response()->file(self::PATH, [
+        return self::serve(self::PATH);
+    }
+
+    /** The rich text editor's script, with TipTap: only pages with an editor load it. */
+    public function editor(): BinaryFileResponse
+    {
+        return self::serve(self::EDITOR);
+    }
+
+    /** Comments and history: only pages that show them load it. */
+    public function features(): BinaryFileResponse
+    {
+        return self::serve(self::FEATURES);
+    }
+
+    private static function serve(string $path): BinaryFileResponse
+    {
+        return response()->file($path, [
             'Content-Type' => 'application/javascript; charset=utf-8',
             'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
     }
 
-    public static function version(): string
+    public static function version(string $path = self::PATH): string
     {
-        return substr((string) @md5_file(self::PATH), 0, 8);
+        return substr((string) @md5_file($path), 0, 8);
     }
 }

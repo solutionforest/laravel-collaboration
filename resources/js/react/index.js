@@ -2,6 +2,10 @@ import { router, useForm } from '@inertiajs/react'
 import { createElement, useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { bindItems } from '../bindings/items.js'
+import { FormMemory } from '../core/form-memory.js'
+import { listOps, toList } from '../core/items.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
 import { describe, translate } from '../ui/avatars.js'
@@ -23,6 +27,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
     const [room, setRoom] = useState(/** @type {Room | null} */ (null))
     const [people, setPeople] = useState(/** @type {Person[]} */ ([]))
     const [status, setStatus] = useState('connecting')
+    const [following, setFollowing] = useState(/** @type {number | null} */ (null))
 
     useEffect(() => {
         if (!config) return
@@ -31,6 +36,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
 
         joined.on('people', setPeople)
         joined.on('status', setStatus)
+        joined.on('following', setFollowing)
         joined.on('expired', () => renewRoom(joined, prop))
 
         setRoom(joined)
@@ -52,7 +58,10 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
         status,
         peopleIn: (/** @type {string} */ field) => peopleIn(people, field),
         isLive: (/** @type {string} */ field) => room?.isLiveField(field) ?? false,
-    }), [room, people, status])
+        following,
+        /** Follow a colleague from field to field; again, or null, to stop. */
+        follow: (/** @type {number | null} */ client) => room?.follow(client),
+    }), [room, people, status, following])
 }
 
 /**
@@ -88,8 +97,20 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     // Others' edits, into the form's state.
     useEffect(() => room?.on('change', ({ field, value }) => {
-        if (field in data) latest.current.setData(field, value ?? emptyLike(data[field]))
+        if (!(field in data)) return
+
+        // A repeater's items are a list in the form, keyed in the draft.
+        latest.current.setData(field, room.config.fields[field] === 'items' ? toList(value) : value ?? emptyLike(data[field]))
     }), [room])
+
+    // Each repeater: one binding for the list, and its sub-field inputs attached as they render.
+    const repeaters = useRef(/** @type {Map<string, Repeater>} */ (new Map()))
+
+    useEffect(() => {
+        repeaters.current.forEach((repeater) => repeater.connect(room))
+
+        return () => repeaters.current.forEach((repeater) => repeater.disconnect())
+    }, [room])
 
     // Inputs that mounted before the room joined are bound once it has; a room that goes takes them with it.
     useEffect(() => {
@@ -98,8 +119,54 @@ export function useCollaborativeForm(config, data, options = {}) {
         return () => fields.current.forEach((binding) => binding.unbind())
     }, [room])
 
-    // Every save carries the edits the server has not seen yet, after the app's own transform.
-    form.transform((values) => ({ ...transform.current(values), [config?.input ?? '_collaboration']: room?.payload() ?? '' }))
+    // What each field held when the form loaded or was last saved, to tell this person's changes from others'.
+    const memory = useMemo(() => (room ? new FormMemory(room, latest.current.data) : null), [room])
+    const [conflicts, setConflicts] = useState(/** @type {import('../core/form-memory.js').Conflict[]} */ ([]))
+
+    // Somebody else saved: their values go into the fields this person left alone.
+    useEffect(() => room?.on('saved', async ({ name }) => {
+        const { take, conflicts: found } = (await memory?.pull(latest.current.data, name)) ?? { take: {}, conflicts: [] }
+
+        if (Object.keys(take).length) latest.current.setData((values) => ({ ...values, ...take }))
+
+        setConflicts([...found])
+    }), [room, memory])
+
+    // A save refused, perhaps because somebody else saved these fields: find out which.
+    useEffect(() => {
+        if (!form.hasErrors || !memory) return
+
+        memory.pull(latest.current.data, memory.conflicts[0]?.name ?? null).then(({ conflicts: found }) => setConflicts([...found])).catch(() => {})
+    }, [form.hasErrors, memory])
+
+    // This person saved: what the form holds is the new base.
+    useEffect(() => {
+        if (!form.wasSuccessful) return
+
+        memory?.saved(latest.current.data)
+        setConflicts([])
+    }, [form.wasSuccessful, memory])
+
+    // Every save carries the edits the server has not seen yet, and the form's base, after the app's own transform.
+    form.transform((values) => ({
+        ...transform.current(values),
+        [config?.input ?? '_collaboration']: room?.payload() ?? '',
+        [`${config?.input ?? '_collaboration'}_base`]: memory?.payload() ?? '',
+    }))
+
+    /** Settle a field somebody else saved too: keep this person's value, or take theirs. */
+    const resolve = {
+        keepMine: (/** @type {string} */ name) => {
+            memory?.keepMine(name)
+            setConflicts([...(memory?.conflicts ?? [])])
+        },
+        useTheirs: (/** @type {string} */ name) => {
+            const theirs = memory?.useTheirs(name)
+
+            latest.current.setData(name, theirs)
+            setConflicts([...(memory?.conflicts ?? [])])
+        },
+    }
 
     /**
      * Props for an `<input>`, `<textarea>`, `<select>` or checkbox. For a
@@ -134,9 +201,39 @@ export function useCollaborativeForm(config, data, options = {}) {
         }
     }
 
+    /**
+     * A repeater: its list, what changes it, and props for each item's sub-field inputs.
+     *
+     *     const lines = form.items('lines')
+     *
+     *     {lines.list.map((line) => <input key={line.key} {...lines.field(line.key, 'title')} />)}
+     *     <button onClick={() => lines.add({ title: '' })}>Add</button>
+     *
+     * @param {keyof TForm & string} name
+     */
+    const items = (name) => {
+        const repeater = repeaters.current.get(name) ?? new Repeater(name, () => latest.current)
+
+        if (!repeaters.current.has(name)) {
+            repeaters.current.set(name, repeater)
+            repeater.connect(room)
+        }
+
+        const list = /** @type {import('../core/items.js').Item[]} */ (form.data[name] ?? [])
+
+        return {
+            list,
+            add: (/** @type {Record<string, any>} */ item = {}) => repeater.change(listOps.add(list, item)),
+            remove: (/** @type {string} */ key) => repeater.change(listOps.remove(list, key)),
+            move: (/** @type {string} */ key, /** @type {number} */ to) => repeater.change(listOps.move(list, key, to)),
+            field: (/** @type {string} */ key, /** @type {string} */ path) => repeater.props(key, path, list.find((item) => item.key === key)?.[path]),
+        }
+    }
+
     return Object.assign(form, {
         field,
-        collaboration,
+        items,
+        collaboration: { ...collaboration, conflicts, ...resolve },
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
             transform.current = callback
@@ -187,12 +284,19 @@ class FieldBinding {
         const room = this.room()
         const element = this.element
 
-        if (this.unbindText || this.unlock || !room || !element) return
+        // A form field outside the room is an ordinary input.
+        if (this.unbindText || this.unlock || !room || !element || !(this.name in room.config.fields || this.name in (room.config.labels ?? {}))) return
 
         if (room.config.fields[this.name] === 'text' && isTextInput(element)) {
             this.unbindText = bindTextField(room, this.name, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => this.form().setData(this.name, value) })
         } else {
-            this.unlock = lockWhileEditing(room, this.name, element)
+            const unlock = lockWhileEditing(room, this.name, element)
+            const unbind = room.bind(this.name, { reveal: () => element.scrollIntoView({ block: 'center', behavior: 'smooth' }) })
+
+            this.unlock = () => {
+                unlock()
+                unbind()
+            }
         }
     }
 
@@ -226,13 +330,115 @@ class FieldBinding {
 }
 
 /**
+ * One repeater of a form: the list binding, and a stable `ref` for each of
+ * its items' sub-field inputs.
+ */
+class Repeater {
+    /** @type {ReturnType<typeof bindItems> | null} */
+    binding = null
+
+    /** @type {Map<string, {ref: (element: any) => void, element: any, detach: (() => void) | null}>} */
+    inputs = new Map()
+
+    /**
+     * @param {string} name
+     * @param {() => {data: Record<string, any>, setData: (field: string, value: any) => void}} form
+     */
+    constructor(name, form) {
+        this.name = name
+        this.form = form
+    }
+
+    /** @param {Room | null} room */
+    connect(room) {
+        if (this.binding || !room || room.config.fields[this.name] !== 'items') return
+
+        this.binding = bindItems(room, this.name, { onValueChange: (list) => this.form().setData(this.name, list) })
+        this.inputs.forEach((input, at) => this.attach(at, input))
+    }
+
+    disconnect() {
+        this.inputs.forEach((input) => {
+            input.detach?.()
+            input.detach = null
+        })
+        this.binding?.destroy()
+        this.binding = null
+    }
+
+    /** @param {import('../core/items.js').Item[]} list */
+    change(list) {
+        this.form().setData(this.name, list)
+        this.binding?.change(list)
+    }
+
+    /**
+     * @param {string} key
+     * @param {string} path
+     * @param {any} value
+     */
+    props(key, path, value) {
+        const at = `${key}\u0000${path}`
+        const input = this.inputs.get(at) ?? { element: null, detach: null, ref: (/** @type {any} */ element) => this.ref(at, element) }
+
+        this.inputs.set(at, input)
+
+        return {
+            name: `${this.name}.${key}.${path}`,
+            ref: input.ref,
+            onChange: (/** @type {any} */ event) => {
+                // Text is shared by the binding; the form keeps up for saving and validation.
+                const list = /** @type {import('../core/items.js').Item[]} */ (this.form().data[this.name] ?? [])
+
+                this.form().setData(this.name, list.map((item) => (item.key === key ? { ...item, [path]: valueOf(event) } : item)))
+            },
+            // Written by the binding, never by React, as text fields are.
+            ...(typeof value === 'boolean' ? { checked: value } : { defaultValue: value ?? '' }),
+        }
+    }
+
+    /**
+     * @param {string} at
+     * @param {any} element
+     */
+    ref(at, element) {
+        const input = this.inputs.get(at)
+
+        if (!input || input.element === element) return
+
+        input.detach?.()
+        input.detach = null
+        input.element = element
+
+        if (element) this.attach(at, input)
+        else this.inputs.delete(at)
+    }
+
+    /**
+     * @param {string} at
+     * @param {{element: any, detach: (() => void) | null}} input
+     */
+    attach(at, input) {
+        if (!this.binding || !input.element || input.detach) return
+
+        const [key = '', path = ''] = at.split('\u0000')
+
+        input.detach = this.binding.attach(key, path, input.element)
+    }
+}
+
+/**
  * The faces of everybody else in the room.
  *
  *     <Avatars form={form} />
  *
- * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, limit?: number, className?: string}} props
+ * Pass a function as its child to draw them yourself:
+ *
+ *     <Avatars form={form}>{({ shown, more, follow }) => …}</Avatars>
+ *
+ * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, limit?: number, className?: string, children?: (avatars: {shown: Person[], more: number, following: number | null, follow: (client: number) => void}) => any}} props
  */
-export function Avatars({ form, collaboration = form?.collaboration, limit, className = '' }) {
+export function Avatars({ form, collaboration = form?.collaboration, limit, className = '', children }) {
     useInsertionEffect(addStyles, [])
 
     if (!collaboration) return null
@@ -240,12 +446,24 @@ export function Avatars({ form, collaboration = form?.collaboration, limit, clas
     const config = collaboration.room?.config
     const { shown, more } = avatarsOf(collaboration.people, limit ?? config?.avatarLimit)
 
+    if (typeof children === 'function') return children({ shown, more, following: collaboration.following, follow: collaboration.follow })
+
     return createElement(
         'div',
         { className: `collab-avatars ${className}`.trim(), title: collaboration.people.length ? undefined : config?.strings?.alone },
         ...shown.map((person) => createElement(
-            'span',
-            { key: person.client, className: 'collab-avatar', title: describe(person, config?.strings, config?.labels), 'data-idle': person.idle || undefined, style: { background: person.color } },
+            'button',
+            {
+                key: person.client,
+                type: 'button',
+                className: 'collab-avatar',
+                title: describe(person, config?.strings, config?.labels),
+                'data-idle': person.idle || undefined,
+                'data-following': collaboration.following === person.client || undefined,
+                'data-collab-follow': '',
+                onClick: () => collaboration.follow?.(person.client),
+                style: { background: person.color },
+            },
             person.avatar ? createElement('img', { src: person.avatar, alt: '', referrerPolicy: 'no-referrer' }) : person.initials,
         )),
         more ? createElement('span', { key: 'more', className: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
@@ -257,10 +475,14 @@ export function Avatars({ form, collaboration = form?.collaboration, limit, clas
  *
  *     <FieldPeople form={form} field="title" />
  *
- * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, field: string, className?: string}} props
+ * A function as its child draws them yourself: `{(people) => …}`.
+ *
+ * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, field: string, className?: string, children?: (people: Person[]) => any}} props
  */
-export function FieldPeople({ form, collaboration = form?.collaboration, field, className = '' }) {
+export function FieldPeople({ form, collaboration = form?.collaboration, field, className = '', children }) {
     useInsertionEffect(addStyles, [])
+
+    if (typeof children === 'function') return children(collaboration?.peopleIn(field) ?? [])
 
     return createElement(
         'span',
@@ -298,6 +520,81 @@ export function Status({ form, collaboration = form?.collaboration, className = 
 
     return createElement('span', { className, 'data-status': status }, notice ?? strings[status] ?? '')
 }
+
+/**
+ * Who is on each record of a list, from `Collaboration::presence($posts)`:
+ *
+ *     const presence = useRecordPresence(props.presence)
+ *
+ *     <RecordPeople presence={presence} record={post.id} />
+ *
+ * @param {any} config
+ * @returns {{people: Record<string, Person[]>, peopleOn: (key: string | number) => Person[]}}
+ */
+export function useRecordPresence(config) {
+    const [people, setPeople] = useState(/** @type {Record<string, Person[]>} */ (config?.people ?? {}))
+
+    useEffect(() => {
+        if (!config) return
+
+        const presence = new RecordPresence(config)
+
+        presence.on('people', (next) => setPeople({ ...next }))
+
+        return () => presence.destroy()
+    }, [config?.token])
+
+    return useMemo(() => ({ people, peopleOn: (key) => people[String(key)] ?? [] }), [people])
+}
+
+/**
+ * The faces of everybody on one record of a list.
+ *
+ * @param {{presence: {peopleOn: (key: string | number) => Person[]}, record: string | number, limit?: number, className?: string}} props
+ */
+export function RecordPeople({ presence, record, limit = 3, className = '' }) {
+    useInsertionEffect(addStyles, [])
+
+    const { shown, more } = avatarsOf(presence.peopleOn(record), limit)
+
+    return createElement('span', { className: `collab-avatars ${className}`.trim() },
+        ...shown.map((person) => createElement('span', { key: person.key, className: 'collab-avatar', title: person.name, 'data-idle': person.idle || undefined, style: { background: person.color } },
+            person.avatar ? createElement('img', { src: person.avatar, alt: '', referrerPolicy: 'no-referrer' }) : person.initials)),
+        more ? createElement('span', { key: 'more', className: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
+    )
+}
+
+/**
+ * Fields somebody else saved while this person changed them too, with a
+ * choice for each: keep mine, or use theirs.
+ *
+ *     <Conflicts form={form} />
+ *
+ * @param {{form: {collaboration: Collaboration & {conflicts: import('../core/form-memory.js').Conflict[], keepMine: (field: string) => void, useTheirs: (field: string) => void}}, className?: string}} props
+ */
+export function Conflicts({ form, className = '' }) {
+    useInsertionEffect(addStyles, [])
+
+    const { conflicts, keepMine, useTheirs, room } = form.collaboration
+    const strings = room?.config.strings ?? {}
+    const labels = room?.config.labels ?? {}
+
+    if (!conflicts.length) return null
+
+    return createElement('div', { className: `collab-conflicts ${className}`.trim(), role: 'alert' }, ...conflicts.map((conflict) => {
+        const name = conflict.name ?? strings.someone ?? 'Someone'
+
+        return createElement('div', { key: conflict.field, className: 'collab-conflict' },
+            createElement('p', null, translate(strings.conflict ?? ':name also changed :field.', { name, field: labels[conflict.field] ?? conflict.field })),
+            createElement('p', { className: 'collab-conflict-theirs' }, shown(conflict.theirs)),
+            createElement('button', { type: 'button', onClick: () => keepMine(conflict.field) }, strings.keep_mine ?? 'Keep mine'),
+            createElement('button', { type: 'button', onClick: () => useTheirs(conflict.field) }, translate(strings.use_theirs ?? 'Use theirs', { name })),
+        )
+    }))
+}
+
+/** A value as a person reads it. */
+const shown = (/** @type {unknown} */ value) => (value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value))
 
 /**
  * @param {Room} room

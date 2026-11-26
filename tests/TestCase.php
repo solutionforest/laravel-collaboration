@@ -11,6 +11,7 @@ use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\CollaborationServiceProvider;
+use SolutionForest\Collaboration\Features;
 
 abstract class TestCase extends Orchestra
 {
@@ -25,6 +26,15 @@ abstract class TestCase extends Orchestra
     {
         $app['config']->set('database.default', 'testing');
         $app['config']->set('auth.providers.users.model', Fixtures\Models\User::class);
+
+        // Every optional part on, so its routes and table exist; tests/FeaturesOff checks the other way.
+        Collaboration::features($this->features());
+    }
+
+    /** @return list<string> */
+    protected function features(): array
+    {
+        return [Features::comments(), Features::history(), Features::uploads()];
     }
 
     protected function defineDatabaseMigrations(): void
@@ -45,6 +55,8 @@ abstract class TestCase extends Orchestra
             $table->text('summary')->nullable();
             $table->text('body')->nullable();
             $table->json('content')->nullable();
+            $table->json('lines')->nullable();
+            $table->string('category')->nullable();
             $table->string('status')->default('draft');
             $table->boolean('featured')->default(false);
             $table->timestamps();

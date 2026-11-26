@@ -1,6 +1,6 @@
 import type { InertiaForm } from '@inertiajs/vue3'
 import type { DefineComponent, Directive, Ref, ShallowRef } from 'vue'
-import type { Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Version, CommentsState, Conflict, Person, RecordComment, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -11,6 +11,8 @@ export interface Collaboration {
     status: Ref<RoomStatus>
     peopleIn(field: string): Person[]
     isLive(field: string): boolean
+    following: Ref<number | null>
+    follow(client: number | null): void
 }
 
 export interface CollaborationOptions {
@@ -27,12 +29,19 @@ export interface FieldReference {
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaForm<TForm> & {
     /** For `v-collaborate="form.field('title')"`: only the form's own fields. */
     field(name: keyof TForm & string): FieldReference
+    /** A repeater: `v-collaborate="form.items('lines').field(line.key, 'title')"`. */
+    items(name: keyof TForm & string): Repeater<FieldReference & { key: string, path: string }>
     collaboration: {
         room: Room | null
         people: Person[]
         status: RoomStatus
         peopleIn(field: string): Person[]
         isLive(field: string): boolean
+        following: number | null
+        follow(client: number | null): void
+        conflicts: Conflict[]
+        keepMine(field: string): void
+        useTheirs(field: string): void
     }
 }
 
@@ -48,3 +57,9 @@ type PresenceProps = { form?: { collaboration: unknown }, collaboration?: Collab
 export const Avatars: DefineComponent<PresenceProps & { limit?: number }>
 export const FieldPeople: DefineComponent<PresenceProps & { field: string }>
 export const Status: DefineComponent<PresenceProps>
+export const Conflicts: DefineComponent<{ form: { collaboration: unknown } }>
+
+/** Who is on each record of a list: `useRecordPresence(() => props.presence)`. */
+export function useRecordPresence(config: () => RecordPresenceConfig | null): { people: Ref<Record<string, RecordPerson[]>>, peopleOn(key: string | number): RecordPerson[] }
+
+export const RecordPeople: DefineComponent<{ presence: { peopleOn(key: string | number): RecordPerson[] }, record: string | number, limit?: number }>

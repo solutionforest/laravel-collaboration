@@ -83,3 +83,31 @@ it('renders the room again for the tab that asks with its client', function (): 
 
     expect($this->post->collaboration()->toArray()['client'])->toBe(12345);
 });
+
+it('takes what somebody else saved into the fields this person left alone', function (): void {
+    $this->post->update(['category' => 'news']);
+    $this->actingAs($this->bob);
+
+    $component = Livewire::test(EditPost::class, ['post' => $this->post->fresh()]);
+
+    $this->post->update(['category' => 'sport']);
+
+    $component->call('pullCollaboration')->assertSet('category', 'sport');
+});
+
+it('asks which version to keep when both changed a field, and keeps the one chosen', function (): void {
+    $this->post->update(['category' => 'news']);
+    $this->actingAs($this->bob);
+
+    $component = Livewire::test(EditPost::class, ['post' => $this->post->fresh()])->set('category', 'tech');
+
+    $this->post->update(['category' => 'sport']);
+
+    $component->call('save')
+        ->assertHasErrors('category')
+        ->assertSet('collaborationConflicts.category.theirs', 'sport');
+
+    $component->call('keepMyVersion', 'category')->call('save')->assertHasNoErrors();
+
+    expect($this->post->fresh()->category)->toBe('tech');
+});

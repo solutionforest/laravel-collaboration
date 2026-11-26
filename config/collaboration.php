@@ -38,6 +38,10 @@ return [
     // Hours before an image inserted into a draft, but never saved, is deleted daily. `null` turns this off.
     'prune_uploads_after' => env('COLLABORATION_PRUNE_UPLOADS_AFTER', 24),
 
+    // Where images put into rich text while editing are stored, and how large they may be.
+    'uploads_disk' => env('COLLABORATION_UPLOADS_DISK', 'public'),
+    'uploads_max_kb' => (int) env('COLLABORATION_UPLOADS_MAX_KB', 5120),
+
     // Sync requests per user per minute, across all of their tabs.
     'rate_limit' => (int) env('COLLABORATION_RATE_LIMIT', 2400),
 ];

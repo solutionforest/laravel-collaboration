@@ -25,6 +25,7 @@ export function bindValueField(room, field, target, { onValueChange, onRemoteCha
             write(elements, value)
             notify?.(value)
         },
+        reveal: () => elements[0]?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     })
 
     const unlocks = elements.map((element) => lockWhileEditing(room, field, element))

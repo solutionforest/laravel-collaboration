@@ -19,11 +19,14 @@ final class EditPost extends Component
 
     public string $status = '';
 
+    public ?string $category = null;
+
     public function mount(Post $post): void
     {
         $this->post = $post;
         $this->title = $post->title;
         $this->status = $post->status;
+        $this->category = $post->category;
     }
 
     public function room(): Room

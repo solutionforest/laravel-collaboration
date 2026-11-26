@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'conflict' => ':name 亦修改了 :field。請選擇要保留的版本，然後再儲存。',
+    'keep_mine' => '保留我的版本',
+    'use_theirs' => '使用 :name 的版本',
     'someone' => '某位同事',
     'busy' => '有同事正在儲存此記錄，請稍後再試。',
     'foreign_upload' => '有圖片尚待上載者儲存，請先由該同事儲存。',
@@ -88,6 +91,25 @@ return [
     ],
 
     'client' => [
+        'conflict' => ':name 亦修改了 :field。請選擇要保留的版本，然後再儲存。',
+        'keep_mine' => '保留我的版本',
+        'use_theirs' => '使用 :name 的版本',
+        'someone' => '某人',
+        'no_comments' => '暫時沒有留言。',
+        'comment_placeholder' => '撰寫留言。用 @ 提及其他人。',
+        'post' => '留言',
+        'resolve' => '標記為已解決',
+        'reopen' => '重新開啟',
+        'resolved_by' => ':name 已解決',
+        'resolved_count' => '已解決（:count）',
+        'no_history' => '暫時沒有變更。',
+        'restore_version' => '還原',
+        'restore_confirm' => '為所有人將草稿還原至 :time 的版本？目前的草稿會保留在記錄中。',
+        'version_edit' => ':name 編輯',
+        'version_save' => ':name 儲存',
+        'version_before' => ':name 還原前',
+        'version_restore' => ':name 還原',
+        'version_discard' => '草稿捨棄前',
         'connecting' => '連線中…',
         'synced' => '所有修改已共享',
         'syncing' => '共享中…',

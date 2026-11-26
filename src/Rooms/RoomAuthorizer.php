@@ -22,8 +22,15 @@ final readonly class RoomAuthorizer implements AuthorizesRooms
     {
         $user = $context->currentUser();
 
-        if ($user === null || ! $context->belongsTo($user) || $context->model === null || $context->key === null) {
+        if ($user === null || ! $context->belongsTo($user) || $context->model === null) {
             return RoomAccess::denied();
+        }
+
+        // Somebody creating a record: the room of everybody creating one, while they still may.
+        if ($context->key === null) {
+            return hash_equals($this->rooms->forScope((new $context->model)->getMorphClass()), $context->room) && self::allows($user, $context->model, 'create')
+                ? RoomAccess::granted()
+                : RoomAccess::denied();
         }
 
         $record = $context->model::query()->whereKey($context->key)->first();
@@ -37,7 +44,8 @@ final readonly class RoomAuthorizer implements AuthorizesRooms
             : RoomAccess::denied();
     }
 
-    public static function allows(Authenticatable $user, Model $record, string $ability): bool
+    /** @param Model|class-string<Model> $record a record, or a model class for `create` */
+    public static function allows(Authenticatable $user, Model|string $record, string $ability): bool
     {
         if (Collaboration::$authorizer !== null) {
             return (Collaboration::$authorizer)($user, $record, $ability);

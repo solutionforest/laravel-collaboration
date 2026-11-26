@@ -8,19 +8,19 @@
 
     <div class="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <label class="block">
-            <span class="field-label">Title</span>
+            <span class="field-label">Title <x-collaboration::field-people field="title" /></span>
             <input wire:model="title" class="field-input">
             @error('title') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </label>
 
         <label class="block">
-            <span class="field-label">Summary</span>
+            <span class="field-label">Summary <x-collaboration::field-people field="summary" /></span>
             <textarea wire:model="summary" rows="2" class="field-input"></textarea>
         </label>
 
         <div class="grid grid-cols-2 gap-5">
             <label class="block">
-                <span class="field-label">Status</span>
+                <span class="field-label">Status <x-collaboration::field-people field="status" /></span>
                 <select wire:model="status" class="field-input">
                     @foreach ($statuses as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
@@ -35,7 +35,7 @@
         </div>
 
         <fieldset>
-            <legend class="field-label">Publish to</legend>
+            <legend class="field-label">Publish to <x-collaboration::field-people field="channels" /></legend>
             <div class="mt-1.5 flex gap-5">
                 @foreach ($channelOptions as $value => $label)
                     <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" wire:model="channels" value="{{ $value }}" class="size-4 rounded border-slate-300"> {{ $label }}</label>
@@ -44,8 +44,8 @@
         </fieldset>
 
         <div>
-            <span class="field-label">Body</span>
-            <div wire:ignore x-data="richEditor('body')" class="editor"><div x-ref="editor"></div></div>
+            <span class="field-label">Body <x-collaboration::field-people field="body" /></span>
+            <x-collaboration::editor field="body" class="editor" />
         </div>
     </div>
 

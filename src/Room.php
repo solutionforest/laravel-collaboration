@@ -17,15 +17,20 @@ use SolutionForest\Collaboration\Crdt\Html;
 use SolutionForest\Collaboration\Documents\DocumentRepository;
 use SolutionForest\Collaboration\Documents\EditTrail;
 use SolutionForest\Collaboration\Documents\SharedField;
+use SolutionForest\Collaboration\Documents\SharedUploads;
 use SolutionForest\Collaboration\Enums\FieldKind;
 use SolutionForest\Collaboration\Enums\PresenceMode;
+use SolutionForest\Collaboration\Exceptions\SaveConflict;
 use SolutionForest\Collaboration\Exceptions\UnknownFieldKind;
+use SolutionForest\Collaboration\Merge\ThreeWayMerge;
 use SolutionForest\Collaboration\Presence\Identity;
 use SolutionForest\Collaboration\Rooms\RoomAuthorizer;
 use SolutionForest\Collaboration\Rooms\RoomContext;
 use SolutionForest\Collaboration\Rooms\RoomResolver;
 use SolutionForest\Collaboration\Saving\LiveSave;
 use SolutionForest\Collaboration\Support\Data;
+use SolutionForest\Collaboration\Support\Database;
+use SolutionForest\Collaboration\Support\Items;
 use SolutionForest\Collaboration\Support\ModelFields;
 use SolutionForest\Collaboration\Support\SaveLock;
 
@@ -46,6 +51,9 @@ final class Room implements Arrayable, JsonSerializable
     /** The name of the input a form sends its live edits in when it is saved. */
     public const INPUT = '_collaboration';
 
+    /** And what its other fields held when it loaded or was last saved. */
+    public const BASE = '_collaboration_base';
+
     /** @var array<string, FieldKind> */
     private array $fields = [];
 
@@ -57,6 +65,12 @@ final class Room implements Arrayable, JsonSerializable
 
     /** @var list<string> */
     private array $locks = [];
+
+    /** @var array<string, list<string>> each list's sub-fields that merge by character */
+    private array $texts = [];
+
+    /** @var array<string, list<string>> each list's other sub-fields */
+    private array $itemValues = [];
 
     private PresenceMode $mode = PresenceMode::Editing;
 
@@ -81,6 +95,27 @@ final class Room implements Arrayable, JsonSerializable
     public function text(string ...$fields): self
     {
         return $this->add(FieldKind::Text, array_values($fields));
+    }
+
+    /**
+     * A repeater: a list of items people add, remove, reorder and edit
+     * together. Sub-fields named in `text` merge by character; those in
+     * `values` take the latest change. Each item is saved with a `key`, so
+     * it keeps its identity from one save to the next.
+     *
+     *     ->items('lines', text: ['description'], values: ['quantity', 'price'])
+     *
+     * Sub-fields the items already have may be edited too.
+     *
+     * @param  list<string>  $text
+     * @param  list<string>  $values
+     */
+    public function items(string $field, array $text = [], array $values = []): self
+    {
+        $this->texts[$field] = $text;
+        $this->itemValues[$field] = $values;
+
+        return $this->add(FieldKind::Items, [$field]);
     }
 
     /** Fields edited in a rich text editor such as TipTap, kept as HTML or as JSON. */
@@ -213,9 +248,18 @@ final class Room implements Arrayable, JsonSerializable
         return $this->fields;
     }
 
+    /** A record's room; before it is saved, the room of everybody creating one. */
     public function id(): string
     {
-        return app(RoomResolver::class)->forRecord($this->record);
+        return $this->isCreating()
+            ? app(RoomResolver::class)->forScope($this->record->getMorphClass())
+            : app(RoomResolver::class)->forRecord($this->record);
+    }
+
+    /** Whether this is a new record, not saved yet: its room only shows who else is creating one. */
+    public function isCreating(): bool
+    {
+        return ! $this->record->exists;
     }
 
     public function draft(): string
@@ -227,17 +271,18 @@ final class Room implements Arrayable, JsonSerializable
     public function toArray(): array
     {
         // A typo in a field name fails here, in development, not silently in the browser.
-        if ($this->record->exists && config('app.debug')) {
+        if (! $this->isCreating() && config('app.debug')) {
             ModelFields::assertExist($this->record, [...array_keys($this->fields), ...$this->locks]);
         }
 
         $user = $this->user();
 
-        if ($user === null || ! RoomAuthorizer::allows($user, $this->record, $this->isEditing() ? 'update' : 'view')) {
+        if ($user === null || ! RoomAuthorizer::allows($user, $this->isCreating() ? $this->record::class : $this->record, $this->ability())) {
             return [];
         }
 
-        $live = $this->isEditing() && Permissions::mayCollaborate($this->record, $user) ? $this->fields : [];
+        // A new record has no draft yet: people creating one see each other, and nothing more.
+        $live = $this->isEditing() && ! $this->isCreating() && Permissions::mayCollaborate($this->record, $user) ? $this->fields : [];
 
         if ($live !== []) {
             $this->reconcile();
@@ -248,10 +293,11 @@ final class Room implements Arrayable, JsonSerializable
         return [
             'id' => substr($context->room, 0, 16).'-'.$context->client,
             'url' => route('collaboration.sync'),
+            'endpoints' => self::endpoints(),
             'csrf' => csrf_token(),
             'token' => $context->toToken(),
             'client' => $context->client,
-            'mode' => $this->mode->value,
+            'mode' => $this->mode()->value,
             'fields' => (object) array_map(static fn (FieldKind $kind): string => $kind->value, $live),
             'labels' => (object) $this->resolvedLabels(),
             'locks' => array_values(array_intersect($this->locks, array_keys($this->fields))),
@@ -260,6 +306,7 @@ final class Room implements Arrayable, JsonSerializable
             'interval' => Collaboration::$pollingInterval,
             'channel' => Collaboration::broadcasts() ? Audience::of($context)->channel() : null,
             'avatarLimit' => Collaboration::$avatarLimit,
+            'styles' => Collaboration::$styles,
             'reportErrors' => $this->isEditing() && Collaboration::reportsEditorErrors(),
             'user' => Identity::for($user)->key,
             'strings' => trans('collaboration::collaboration.client'),
@@ -283,13 +330,17 @@ final class Room implements Arrayable, JsonSerializable
      * @param  array<string, mixed>  $values  what the form submitted
      * @param  Closure(array<string, mixed>): TResult  $persist  writes the values to the database
      * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
+     * @param  array<string, mixed>|null  $base  what the form's other fields held when it loaded; read from the request when null
      * @return TResult
+     *
+     * @throws SaveConflict when somebody else saved a field this person changed too
      */
-    public function save(array $values, Closure $persist, ?string $sync = null): mixed
+    public function save(array $values, Closure $persist, ?string $sync = null, ?array $base = null): mixed
     {
         $sync ??= Data::string(request()->input(self::INPUT));
+        $base ??= Data::decode(request()->input(self::BASE));
 
-        return app(SaveLock::class)->block($this->id(), function () use ($values, $persist, $sync): mixed {
+        return app(SaveLock::class)->block($this->id(), function () use ($values, $persist, $sync, $base): mixed {
             $documents = app(DocumentRepository::class);
             $context = $this->contextFromSync($sync);
             $live = new LiveSave;
@@ -299,12 +350,21 @@ final class Room implements Arrayable, JsonSerializable
                 $live = LiveSave::prepare($documents, $context->draft(), $context->client, $sync, $context->fields, $context->allowed, $context->currentUser());
             }
 
+            $values = $this->mergeOtherFields($values, $base, $live->fields);
             $mine = $this->toShared($values);
             $published = $live->valuesToPublish($mine, $this->currentValues());
             $result = $persist([...$values, ...$this->fromShared($published)]);
 
+            // A new record saved through its create room has no draft to bring up to date.
+            if ($this->isCreating()) {
+                return $result;
+            }
+
             $this->record->refresh();
             $this->markSaved($context, $live, $mine);
+
+            // Images the record now holds are the record's, no longer the draft's.
+            app(SharedUploads::class)->release($this->draft());
 
             return $result;
         });
@@ -317,10 +377,65 @@ final class Room implements Arrayable, JsonSerializable
      *
      * @param  array<string, mixed>  $values  what the form submitted
      * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
+     * @param  array<string, mixed>|null  $base  what the form's other fields held when it loaded; read from the request when null
      */
-    public function update(array $values, ?string $sync = null): bool
+    public function update(array $values, ?string $sync = null, ?array $base = null): bool
     {
-        return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync);
+        return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync, $base);
+    }
+
+    /**
+     * Fields that are not live, merged three ways against what the form
+     * loaded: one this person left alone keeps what somebody else saved
+     * meanwhile, and one both changed stops the save until they choose.
+     *
+     * @param  array<string, mixed>  $values
+     * @param  array<string, mixed>  $base
+     * @param  list<string>  $live
+     * @return array<string, mixed>
+     *
+     * @throws SaveConflict
+     */
+    private function mergeOtherFields(array $values, array $base, array $live): array
+    {
+        if ($base === [] || ! $this->record->exists) {
+            return $values;
+        }
+
+        $saved = $this->record->fresh()?->toArray() ?? [];
+        $conflicts = [];
+
+        foreach ($values as $field => $mine) {
+            if (in_array($field, $live, true) || ! array_key_exists($field, $base) || ! array_key_exists($field, $saved)) {
+                continue;
+            }
+
+            $theirs = $saved[$field];
+
+            if (ThreeWayMerge::same($theirs, $base[$field])) {
+                continue;
+            }
+
+            if (ThreeWayMerge::same($mine, $base[$field])) {
+                $values[$field] = $this->record->getAttribute($field);
+            } elseif (! ThreeWayMerge::same($mine, $theirs)) {
+                $conflicts[$field] = $theirs;
+            }
+        }
+
+        if ($conflicts !== []) {
+            throw SaveConflict::on($conflicts, $this->resolvedLabels(), $this->lastSavedBy());
+        }
+
+        return $values;
+    }
+
+    /** Who saved the record last, through its room. */
+    private function lastSavedBy(): string
+    {
+        $savedBy = Data::decode(Database::table('documents')->where('room', $this->draft())->value('saved_by'));
+
+        return Data::nullableString($savedBy['name'] ?? null) ?? Data::string(__('collaboration::collaboration.someone'));
     }
 
     /**
@@ -345,7 +460,7 @@ final class Room implements Arrayable, JsonSerializable
         $values = $this->currentValues();
 
         return array_map(
-            static fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field]),
+            fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field], $this->texts[$field] ?? []),
             array_keys($this->fields),
             $this->fields,
         );
@@ -413,15 +528,15 @@ final class Room implements Arrayable, JsonSerializable
 
         return new RoomContext(
             room: $this->id(),
-            scope: null,
-            mode: $this->mode,
+            scope: $this->isCreating() ? $this->id() : null,
+            mode: $this->mode(),
             client: $this->client,
             guard: $this->guardName(),
             user: Data::string($user->getAuthIdentifier()),
             fields: $live,
             visible: array_keys($this->fields),
             model: $this->record::class,
-            key: Data::string($this->record->getKey()),
+            key: $this->isCreating() ? null : Data::string($this->record->getKey()),
             expiresAt: now()->getTimestamp() + max(1, Data::int(Collaboration::config('token_lifetime'), 900)),
             allowed: array_intersect_key($this->allowedValuesOfFields(), $live),
             permissions: Permissions::version($this->id()),
@@ -468,6 +583,10 @@ final class Room implements Arrayable, JsonSerializable
             if ($this->fields[$field] === FieldKind::RichText && is_array($value) && ! $this->keepsJson($field)) {
                 $values[$field] = Html::fromDocument(Data::map($value));
             }
+
+            if ($this->fields[$field] === FieldKind::Items) {
+                $values[$field] = Items::asList($value);
+            }
         }
 
         return $values;
@@ -485,6 +604,7 @@ final class Room implements Arrayable, JsonSerializable
             $value instanceof DateTimeInterface => $value->format('Y-m-d H:i:s'),
             $kind === FieldKind::RichText && is_string($value) => Html::toDocument($value),
             $kind === FieldKind::RichText && $value === null => ['type' => 'doc', 'content' => [['type' => 'paragraph']]],
+            $kind === FieldKind::Items => Items::byKey($value),
             $kind === FieldKind::Text && $value !== null && ! is_string($value) => is_scalar($value) ? (string) $value : $value,
             default => $value,
         };
@@ -518,6 +638,22 @@ final class Room implements Arrayable, JsonSerializable
     }
 
     /**
+     * The sub-fields of a list: those declared, and those its items have.
+     *
+     * @return list<string>
+     */
+    private function itemPaths(string $field): array
+    {
+        $paths = [...($this->texts[$field] ?? []), ...($this->itemValues[$field] ?? [])];
+
+        foreach (Items::byKey(data_get($this->record, $field)) as $item) {
+            array_push($paths, ...array_map(strval(...), array_keys($item)));
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
      * The values each picked field may take: what `value()` was given, or an enum cast's cases.
      *
      * @return array<string, list<string>>
@@ -527,6 +663,13 @@ final class Room implements Arrayable, JsonSerializable
         $allowed = $this->allowed;
 
         foreach ($this->fields as $field => $kind) {
+            // A list's sub-fields: the only paths an edit inside an item may name.
+            if ($kind === FieldKind::Items) {
+                $allowed[$field] = $this->itemPaths($field);
+
+                continue;
+            }
+
             $enum = $kind === FieldKind::Value ? ModelFields::enumOf($this->record, $field) : null;
 
             if (! isset($allowed[$field]) && $enum !== null) {
@@ -559,9 +702,43 @@ final class Room implements Arrayable, JsonSerializable
         return $labels;
     }
 
+    /**
+     * Where the page asks about its room besides syncing. An integration
+     * that registers its own routes keeps the names.
+     *
+     * @return array<string, string>
+     */
+    private static function endpoints(): array
+    {
+        $endpoints = [];
+
+        foreach (['values', 'comments', 'comments.store', 'comments.resolve', 'comments.reopen', 'versions', 'versions.restore', 'uploads'] as $name) {
+            if (app('router')->has("collaboration.{$name}")) {
+                $endpoints[$name] = route("collaboration.{$name}");
+            }
+        }
+
+        return $endpoints;
+    }
+
     private function isEditing(): bool
     {
         return $this->mode === PresenceMode::Editing;
+    }
+
+    private function mode(): PresenceMode
+    {
+        return $this->isCreating() && $this->isEditing() ? PresenceMode::Creating : $this->mode;
+    }
+
+    /** What the policy is asked: `create`, `update`, or `view` for a room people only watch. */
+    private function ability(): string
+    {
+        return match (true) {
+            $this->isCreating() => 'create',
+            $this->isEditing() => 'update',
+            default => 'view',
+        };
     }
 
     private function user(): ?Authenticatable

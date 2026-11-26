@@ -4,6 +4,7 @@ import { Presence } from './presence.js'
 import { Realtime } from './realtime.js'
 import { Recovery } from './recovery.js'
 import { HttpTransport } from './transport.js'
+import { withoutStyles } from '../ui/styles.js'
 
 /** Without a key press or a click for this long, a person shows as away. */
 const IDLE_AFTER = 120_000
@@ -19,6 +20,7 @@ const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mill
  * @property {() => void} [render] called after: show the new value and put the caret back
  * @property {() => ({anchor: number, head: number} | null)} [cursor] this person's selection, while they are in the field
  * @property {boolean} [isBusy] true during an IME composition, which must not be replaced
+ * @property {() => void} [reveal] brings the field into view, for somebody following a colleague
  */
 
 /**
@@ -51,6 +53,12 @@ export class Room {
     timer = null
     /** @type {Set<string> | undefined} fields already warned about */
     warned
+    /** @type {number | null} the client of the colleague this page follows from field to field */
+    following = null
+    /** @type {string | null} the field they were last seen in */
+    followedField = null
+    /** when they were last seen in the room */
+    followedSeenAt = 0
     dueAt = 0
 
     /**
@@ -60,6 +68,9 @@ export class Room {
     constructor(config, { transport = new HttpTransport() } = {}) {
         this.config = config
         this.transport = transport
+
+        if (config.styles === false) withoutStyles()
+
         this.outbox = new Outbox()
         this.presence = new Presence()
         this.recovery = new Recovery(typeof sessionStorage === 'undefined' ? null : `${config.draft}:${config.user}`)
@@ -235,6 +246,82 @@ export class Room {
     }
 
     /**
+     * Follow a colleague: the page brings whichever field they are in into
+     * view, until they leave or this person does something. Null stops.
+     *
+     * @param {number | null} client
+     */
+    follow(client) {
+        this.following = client === this.following ? null : client
+        this.followedField = null
+        this.followedSeenAt = Date.now()
+        this.emit('following', this.following)
+        this.followUp()
+    }
+
+    /** Goes where the person followed is now. */
+    followUp() {
+        if (this.following === null) return
+
+        const person = this.presence.people.find((item) => item.client === this.following)
+
+        // Gone for a while: a closed tab, or no longer allowed in.
+        if (!person) {
+            if (Date.now() - this.followedSeenAt > 10_000) this.follow(null)
+
+            return
+        }
+
+        this.followedSeenAt = Date.now()
+
+        if (!person.field || person.field === this.followedField) return
+
+        this.followedField = person.field
+        this.bindings.get(person.field)?.reveal?.()
+    }
+
+    /**
+     * Asks the server something about this room, such as its comments:
+     * `room.call('comments')`. The room's token goes with it.
+     *
+     * @param {string} endpoint a name from `config.endpoints`
+     * @param {Record<string, unknown>} [payload]
+     * @returns {Promise<any>}
+     */
+    call(endpoint, payload = {}) {
+        const url = this.config.endpoints?.[endpoint]
+
+        if (!url) return Promise.reject(new Error(`[collaboration] This room has no "${endpoint}" endpoint.`))
+
+        return this.transport.send({ url, csrf: this.config.csrf }, { ...payload, token: this.config.token })
+    }
+
+    /**
+     * Stores an image for a rich text field, for everybody to see at once.
+     *
+     * @param {File} file
+     * @param {string} field
+     * @returns {Promise<string>} its URL
+     */
+    async upload(file, field) {
+        const url = this.config.endpoints?.uploads
+
+        if (!url) throw new Error('[collaboration] This room takes no uploads.')
+
+        const body = new FormData()
+
+        body.append('token', this.config.token)
+        body.append('field', field)
+        body.append('file', file)
+
+        const response = await fetch(url, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.config.csrf } })
+
+        if (!response.ok) throw new Error(`[collaboration] The image was not stored (${response.status}).`)
+
+        return (await response.json()).url
+    }
+
+    /**
      * What a form sends when it is saved, so the save includes edits the
      * server has not seen yet. `Room::save()` reads it.
      */
@@ -303,7 +390,12 @@ export class Room {
         const { signal } = this.events
 
         for (const name of ['keydown', 'pointerdown']) {
-            window.addEventListener(name, () => this.active(), { signal, capture: true, passive: true })
+            window.addEventListener(name, (event) => {
+                this.active()
+
+                // Doing something yourself stops following somebody else.
+                if (this.following !== null && event.isTrusted && !(event.target instanceof Element && event.target.closest('[data-collab-follow]'))) this.follow(null)
+            }, { signal, capture: true, passive: true })
         }
 
         document.addEventListener(
@@ -431,6 +523,8 @@ export class Room {
         }
 
         if (this.presence.receive(response)) this.emit('people', this.people)
+
+        this.followUp()
 
         this.noticeSave(response)
         this.setStatus(this.stopped ? 'stopped' : this.outbox.isEmpty ? 'synced' : 'syncing')
@@ -601,6 +695,7 @@ export class Room {
         if (payload.person) {
             this.presence.move(payload.person)
             this.emit('people', this.people)
+            this.followUp()
         }
 
         if (payload.sync || payload.refresh) this.syncSoon(30)

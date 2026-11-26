@@ -7,8 +7,10 @@ namespace SolutionForest\Collaboration\Tests\Support;
 use Illuminate\Testing\TestResponse;
 use SolutionForest\Collaboration\Crdt\Document;
 use SolutionForest\Collaboration\Room;
+use SolutionForest\Collaboration\Support\Data;
 use SolutionForest\Collaboration\Tests\Fixtures\Models\User;
 use SolutionForest\Collaboration\Tests\TestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 /** One open tab, doing what the JavaScript client does. */
 final class Browser
@@ -35,17 +37,24 @@ final class Browser
 
     public function type(string $field, mixed $value): self
     {
-        $operations = $this->document?->changes($field, $value, client: $this->config['client']) ?? [];
+        if ($this->document === null) {
+            return $this;
+        }
+
+        $operations = $this->document->changes($field, $value, client: Data::int($this->config['client'] ?? null));
 
         if ($operations !== []) {
-            $this->document?->apply($operations);
+            $this->document->apply($operations);
             $this->outbox[] = ['n' => ++$this->batch, 'ops' => $operations];
         }
 
         return $this;
     }
 
-    /** @param array<string, mixed> $extra */
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return TestResponse<Response>
+     */
     public function sync(array $extra = []): TestResponse
     {
         $this->test->actingAs($this->user);
@@ -59,7 +68,7 @@ final class Browser
         ]);
 
         if ($response->isOk() && $response->json('epoch') !== null) {
-            $this->receive($response->json());
+            $this->receive(Data::map($response->json()));
         }
 
         return $response;
@@ -84,10 +93,10 @@ final class Browser
         if ($response['state'] !== null) {
             $this->document = Document::from($response['state']);
         } elseif ($response['operations'] !== []) {
-            $this->document?->apply($response['operations']);
+            $this->document?->apply(array_map(Data::map(...), Data::list($response['operations'])));
         }
 
-        $this->epoch = $response['epoch'];
-        $this->sequence = $response['sequence'];
+        $this->epoch = Data::int($response['epoch'] ?? null);
+        $this->sequence = Data::int($response['sequence'] ?? null);
     }
 }

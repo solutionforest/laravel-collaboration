@@ -9,5 +9,7 @@ export function CollaborativeEditor<TForm extends Record<string, any>>(props: {
     field: keyof TForm & string
     /** StarterKit by default. */
     extensions?: AnyExtension[]
+    /** Upload images pasted or dropped in: add TipTap's Image to `extensions`. */
+    images?: boolean
     className?: string
 }): ReactElement

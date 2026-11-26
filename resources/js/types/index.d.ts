@@ -2,6 +2,8 @@
 export interface RoomConfig {
     id: string
     url: string
+    /** Where the page asks about its room besides syncing: comments, versions, values, uploads. */
+    endpoints: Record<string, string>
     csrf: string
     token: string
     client: number
@@ -16,6 +18,8 @@ export interface RoomConfig {
     /** The input a save sends its unsynced edits in. */
     input: string
     interval: number
+    /** False when the app styles everything itself. */
+    styles?: boolean
     channel: string | null
     avatarLimit: number
     reportErrors: boolean
@@ -60,6 +64,8 @@ export interface FieldBinding {
     capture?(): void
     render?(): void
     cursor?(): Selection | null
+    /** Brings the field into view, for somebody following a colleague. */
+    reveal?(): void
     readonly isBusy?: boolean
 }
 
@@ -71,6 +77,7 @@ export interface RoomEvents {
     saved: { name: string | null }
     expired: Room
     deleted: { name: string | null }
+    following: number | null
 }
 
 /** One record's room in this tab: the shared draft, the people in it, and the sync loop. */
@@ -96,6 +103,14 @@ export class Room {
     peopleIn(field: string): Person[]
     /** Who holds a locked field right now, if somebody else does. */
     lockedBy(field: string): Person | null
+    /** The colleague this page follows from field to field, by client. */
+    readonly following: number | null
+    /** Follow a colleague; again, or null, to stop. */
+    follow(client: number | null): void
+    /** Stores an image for a rich text field; resolves to its URL. */
+    upload(file: File, field: string): Promise<string>
+    /** Asks the server something about this room, such as `room.call('comments')`. */
+    call<T = any>(endpoint: string, payload?: Record<string, unknown>): Promise<T>
     /** What a form sends when it is saved; `Room::save()` reads it. */
     payload(): string
     on<E extends keyof RoomEvents>(event: E, callback: (detail: RoomEvents[E]) => void): () => void
@@ -145,3 +160,106 @@ export function avatarsOf(people: Person[], limit?: number): { shown: Person[], 
 
 /** An input's change event as a form value; anything else as it is. */
 export function valueOf(event: unknown): unknown
+
+/** A field somebody else saved while this person changed it too. */
+export interface Conflict {
+    field: string
+    mine: unknown
+    theirs: unknown
+    name: string | null
+}
+
+/** What a form's other fields held when it loaded or was last saved. */
+export class FormMemory {
+    constructor(room: Room, values: Record<string, unknown>)
+    readonly conflicts: Conflict[]
+    saved(values: Record<string, unknown>): void
+    pull(current: Record<string, unknown>, name?: string | null): Promise<{ take: Record<string, unknown>, conflicts: Conflict[] }>
+    keepMine(field: string): void
+    useTheirs(field: string): unknown
+    payload(): string
+}
+
+/** What `Collaboration::presence($records)` renders. */
+export interface RecordPresenceConfig {
+    url: string
+    csrf: string
+    token: string
+    interval: number
+    people: Record<string, RecordPerson[]>
+    strings: Record<string, string>
+}
+
+/** Somebody on a record of a list. */
+export interface RecordPerson {
+    key: string
+    name: string
+    initials: string
+    avatar: string | null
+    color: string
+    mode: string
+    idle: boolean
+}
+
+/** Who is on each record of a list, asked again every few seconds. */
+export class RecordPresence {
+    constructor(config: RecordPresenceConfig)
+    readonly people: Record<string, RecordPerson[]>
+    peopleOn(key: string | number): RecordPerson[]
+    on(event: 'people', callback: (people: Record<string, RecordPerson[]>) => void): () => void
+    destroy(): void
+}
+
+/** One item of a repeater, as a form holds it. */
+export type Item = Record<string, any> & { key: string }
+
+/** A repeater's list, and what changes it. */
+export interface Repeater<TFieldProps> {
+    readonly list: Item[]
+    add(item?: Record<string, any>): void
+    remove(key: string): void
+    move(key: string, to: number): void
+    /** What binds one item's sub-field input. */
+    field(key: string, path: string): TFieldProps
+}
+
+/** A comment on a record, or on one of its fields. */
+export interface RecordComment {
+    id: number
+    field: string | null
+    body: string
+    /** The body, escaped, with mentions marked. */
+    html: string
+    author: string
+    mine: boolean
+    mentions: string[]
+    at: string
+    resolved: boolean
+    resolvedBy: string | null
+}
+
+/** What a comments hook gives an app's own UI. */
+export interface CommentsState<TList> {
+    comments: TList
+    mentionable: string[] | { value: string[] }
+    canWrite: boolean | { value: boolean }
+    /** Mention people as `@Name`. */
+    post(body: string, field?: string | null): Promise<RecordComment[]> | undefined
+    resolve(id: number): Promise<RecordComment[]> | undefined
+    reopen(id: number): Promise<RecordComment[]> | undefined
+}
+
+
+/** One version of the shared draft. */
+export interface Version {
+    id: number
+    /** `edit`, `save`, `before`, `restore` or `discard`. */
+    reason: string
+    name: string | null
+    at: string
+    changed: string[]
+}
+
+
+/** Leaves all the styling to the app; the elements keep their `collab-` class names. */
+export function withoutStyles(): void

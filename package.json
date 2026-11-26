@@ -10,6 +10,14 @@
             "types": "./resources/js/index.d.ts",
             "default": "./resources/js/index.js"
         },
+        "./comments": {
+            "types": "./resources/js/comments.d.ts",
+            "default": "./resources/js/comments.js"
+        },
+        "./history": {
+            "types": "./resources/js/history.d.ts",
+            "default": "./resources/js/history.js"
+        },
         "./react": {
             "types": "./resources/js/react/index.d.ts",
             "default": "./resources/js/react/index.js"
@@ -18,6 +26,14 @@
             "types": "./resources/js/react/editor.d.ts",
             "default": "./resources/js/react/editor.js"
         },
+        "./react/comments": {
+            "types": "./resources/js/react/comments.d.ts",
+            "default": "./resources/js/react/comments.js"
+        },
+        "./react/history": {
+            "types": "./resources/js/react/history.d.ts",
+            "default": "./resources/js/react/history.js"
+        },
         "./vue": {
             "types": "./resources/js/vue/index.d.ts",
             "default": "./resources/js/vue/index.js"
@@ -25,6 +41,14 @@
         "./vue/editor": {
             "types": "./resources/js/vue/editor.d.ts",
             "default": "./resources/js/vue/editor.js"
+        },
+        "./vue/comments": {
+            "types": "./resources/js/vue/comments.d.ts",
+            "default": "./resources/js/vue/comments.js"
+        },
+        "./vue/history": {
+            "types": "./resources/js/vue/history.d.ts",
+            "default": "./resources/js/vue/history.js"
         },
         "./tiptap": {
             "types": "./resources/js/tiptap/index.d.ts",
@@ -36,7 +60,7 @@
         "resources/dist"
     ],
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && vite build -c vite.editor.config.js && vite build -c vite.features.config.js",
         "lint": "eslint resources/js tests/js",
         "test": "node --test \"tests/js/*.test.js\"",
         "check": "npm run lint && npm run typecheck && npm test",
@@ -87,6 +111,7 @@
         "@inertiajs/react": "^3.11.0",
         "@inertiajs/vue3": "^3.11.0",
         "@tiptap/core": "^3.35.0",
+        "@tiptap/extension-image": "^3.35.0",
         "@tiptap/pm": "^3.35.0",
         "@tiptap/react": "^3.35.0",
         "@tiptap/starter-kit": "^3.35.0",
@@ -100,5 +125,8 @@
         "typescript": "^7.0.2",
         "vite": "^8.0.0",
         "vue": "^3.5.46"
-    }
+    },
+    "sideEffects": [
+        "./resources/js/livewire/*.js"
+    ]
 }

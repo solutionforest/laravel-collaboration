@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use SolutionForest\Collaboration\Collaboration;
+use SolutionForest\Collaboration\Http\Controllers\PresenceController;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
+use SolutionForest\Collaboration\Http\Controllers\ValuesController;
 use SolutionForest\Collaboration\Http\Middleware\KeepSessionReadOnly;
 use SolutionForest\Collaboration\Support\Data;
 
@@ -17,3 +19,11 @@ Route::post($path.'/sync', SyncController::class)
     ->name('collaboration.sync');
 
 Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.livewire');
+Route::get($path.'/livewire-editor.js', [ScriptController::class, 'editor'])->name('collaboration.livewire.editor');
+Route::get($path.'/livewire-features.js', [ScriptController::class, 'features'])->name('collaboration.livewire.features');
+
+// What a page asks about its room besides syncing. Each request carries the room's token.
+Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->name('collaboration.')->group(function (): void {
+    Route::post('values', ValuesController::class)->name('values');
+    Route::post('presence', PresenceController::class)->name('presence');
+});

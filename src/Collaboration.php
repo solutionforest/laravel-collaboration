@@ -35,6 +35,12 @@ final class Collaboration
     /** @var bool|(Closure(): bool) whether browsers report the editor errors they recovered from */
     public static bool|Closure $reportsEditorErrors = false;
 
+    /** @var list<string> the optional parts turned on, from `Features` */
+    public static array $features = [];
+
+    /** Whether the browser adds the package's small stylesheet. */
+    public static bool $styles = true;
+
     /** Whether the package registers its sync route. */
     public static bool $registersRoutes = true;
 
@@ -47,6 +53,9 @@ final class Collaboration
     /** @var (Closure(): ?Authenticatable)|null */
     public static ?Closure $userResolver = null;
 
+    /** @var (Closure(Model): iterable<Authenticatable>)|null */
+    public static ?Closure $mentionableResolver = null;
+
     /** @var (Closure(string, mixed): mixed)|null */
     public static ?Closure $configResolver = null;
 
@@ -56,7 +65,7 @@ final class Collaboration
     /** @var (Closure(Authenticatable): ?string)|null */
     public static ?Closure $userAvatarResolver = null;
 
-    /** @var (Closure(Authenticatable, Model, string): bool)|null */
+    /** @var (Closure(Authenticatable, Model|class-string<Model>, string): bool)|null */
     public static ?Closure $authorizer = null;
 
     /** @var (Closure(Model|null): mixed)|null */
@@ -66,6 +75,27 @@ final class Collaboration
     public static function room(Model $record): Room
     {
         return new Room($record);
+    }
+
+    /**
+     * Who is on each record of a list or table, kept up to date while the page is open.
+     *
+     * @param  iterable<Model>  $records
+     */
+    public static function presence(iterable $records): RecordPresence
+    {
+        return new RecordPresence($records);
+    }
+
+    /**
+     * The room of everybody creating a record of this model: they see each
+     * other, until each saves their own.
+     *
+     * @param  class-string<Model>  $model
+     */
+    public static function creating(string $model): Room
+    {
+        return new Room(new $model);
     }
 
     /**
@@ -106,6 +136,42 @@ final class Collaboration
         self::$reportsEditorErrors = $reports;
     }
 
+    /**
+     * Turns on optional parts: comments, history, uploads. Call it in a
+     * service provider's `register()` or `boot()`.
+     *
+     *     Collaboration::features([Features::comments(), Features::history()]);
+     *
+     * @param  list<string>  $features
+     */
+    public static function features(array $features): void
+    {
+        self::$features = array_values(array_unique([...self::$features, ...$features]));
+    }
+
+    public static function hasFeature(string $feature): bool
+    {
+        return in_array($feature, self::$features, true);
+    }
+
+    /**
+     * Whether comments are stored, so a deleted record's must go too: with
+     * the feature on, or in an integration such as Filament that keeps its own tables.
+     */
+    public static function storesComments(): bool
+    {
+        return self::hasFeature(Features::COMMENTS) || ! self::$runsMigrations;
+    }
+
+    /**
+     * Style everything yourself: the browser adds no stylesheet, and the
+     * elements keep their `collab-` class names.
+     */
+    public static function withoutStyles(): void
+    {
+        self::$styles = false;
+    }
+
     /** Register the sync route yourself, for example with other middleware. */
     public static function ignoreRoutes(): void
     {
@@ -126,6 +192,26 @@ final class Collaboration
     public static function config(string $key, mixed $default = null): mixed
     {
         return self::$configResolver === null ? config("collaboration.{$key}", $default) : (self::$configResolver)($key, $default);
+    }
+
+    /**
+     * Who may be @mentioned in a record's comments. Nobody, until you say:
+     *
+     *     Collaboration::mentionUsersUsing(fn (Post $post) => $post->team->users);
+     *
+     * Mentions arrive in the `CommentPosted` event, for your notifications.
+     *
+     * @param  Closure(Model $record): iterable<Authenticatable>  $callback
+     */
+    public static function mentionUsersUsing(Closure $callback): void
+    {
+        self::$mentionableResolver = $callback;
+    }
+
+    /** @return iterable<Authenticatable> */
+    public static function mentionable(Model $record): iterable
+    {
+        return self::$mentionableResolver === null ? [] : (self::$mentionableResolver)($record);
     }
 
     /** Keep your own tables, for example after publishing and changing the migration. */
@@ -166,7 +252,7 @@ final class Collaboration
      * Decide who may join a record's room. By default, editing needs the
      * policy's `update` ability and viewing its `view` ability.
      *
-     * @param  Closure(Authenticatable $user, Model $record, string $ability): bool  $callback
+     * @param  Closure(Authenticatable $user, Model|class-string<Model> $record, string $ability): bool  $callback  a record, or a model class for `create`
      */
     public static function authorizeUsing(Closure $callback): void
     {
@@ -218,9 +304,12 @@ final class Collaboration
         self::$audits = false;
         self::$reportsEditorErrors = false;
         self::$registersRoutes = true;
+        self::$styles = true;
+        self::$features = [];
         self::$runsMigrations = true;
         self::$userResolver = null;
         self::$configResolver = null;
+        self::$mentionableResolver = null;
         self::$colors = Palette::DEFAULT;
         self::$userNameResolver = null;
         self::$userAvatarResolver = null;

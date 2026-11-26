@@ -8,6 +8,8 @@ It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with 
 
 <sub>Alice in React, Bob in Vue and Chloe in Livewire, editing one article. Recorded from the [demo](#run-the-demo). [Watch as MP4](docs/media/demo.mp4).</sub>
 
+**Documentation site:** `cd website && npm install && npm run dev` builds it from this README.
+
 **Contents:** [What you get](#what-you-get) · [Compared with filament-collaboration](#compared-with-filament-collaboration) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [Run the demo](#run-the-demo) · [Testing](#testing)
 
 ## What you get
@@ -35,13 +37,13 @@ Both packages share one engine. filament-collaboration is built on this package,
 | Presence: faces, who is in which field, sync status | ✓ | ✓ |
 | Saving everybody's edits, deleted-record notice, permission changes | ✓ | ✓ |
 | Values limited to an enum, one draft per language | ✓ | ✓ |
-| Repeaters and builders (lists of items) | ✓ | engine only, no binding yet |
-| Comments and @mentions | ✓ | storage only, no UI yet |
-| Version history and restoring a draft | ✓ | storage only, no UI yet |
-| Choosing between versions when a save conflicts | ✓ | the latest save wins |
-| Images uploaded into rich text while editing | ✓ | not yet |
-| Who is on which record, in a table | ✓ | not yet |
-| Follow a colleague from field to field | ✓ | not yet |
+| Repeaters and builders (lists of items) | ✓ | ✓ |
+| Comments and @mentions | ✓ | ✓, optional |
+| Version history and restoring a draft | ✓ | ✓, optional |
+| Choosing between versions when a save conflicts | ✓ | ✓ |
+| Images uploaded into rich text while editing | ✓ | ✓, optional |
+| Who is on which record, in a table | ✓ | ✓ |
+| Follow a colleague from field to field | ✓ | ✓ |
 
 ## Requirements
 
@@ -66,12 +68,14 @@ The repository is private for now, so first tell Composer where it is, in your a
 ]
 ```
 
-Then install it and create its tables:
+Then install it, and let the installer set it up:
 
 ```bash
 composer require solutionforest/laravel-collaboration
-php artisan migrate
+php artisan collaboration:install
 ```
+
+The installer publishes the config, creates the tables, installs the browser side for an Inertia app, and prints the next steps for your stack.
 
 **Livewire apps** need nothing else: the package serves its own script.
 
@@ -249,7 +253,7 @@ const form = useCollaborativeForm(() => props.collaboration, {
 | Locked fields | built in | built in | built in |
 | Rich text | TipTap + `Collaborative` | `<CollaborativeEditor>` | `<CollaborativeEditor>` |
 | Faces | built in | `<Avatars>` | `<Avatars>` |
-| Who is in a field | carets | `<FieldPeople>` | `<FieldPeople>` |
+| Who is in a field | `<x-collaboration::field-people>` | `<FieldPeople>` | `<FieldPeople>` |
 | Sync status | built in | `<Status>` | `<Status>` |
 | Save | `saveCollaboratively()` | `$room->update()` | `$room->update()` |
 
@@ -261,36 +265,14 @@ Rich text fields are edited with [TipTap](https://tiptap.dev). The column decide
 
 **React and Vue:** `<CollaborativeEditor form={form} field="body" />` comes with StarterKit. Pass `extensions` to use your own.
 
-**Livewire:** add the `Collaborative` extension to a TipTap editor in an Alpine component. `Collaboration.whenReady()` hands you the component's room once it has joined:
-
-```js
-// resources/js/app.js
-import { Editor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import { Collaborative } from '@solutionforest/laravel-collaboration/tiptap'
-
-document.addEventListener('alpine:init', () => {
-    Alpine.data('richEditor', (field) => ({
-        init() {
-            Collaboration.whenReady(this.$el, (room) => {
-                // Kept out of Alpine's state: ProseMirror must not be proxied.
-                new Editor({
-                    element: this.$refs.editor,
-                    extensions: [StarterKit, Collaborative.configure({ room, field })],
-                    content: this.$wire.get(field),
-                    onUpdate: ({ editor: updated }) => this.$wire.$set(field, updated.getJSON(), false),
-                })
-            })
-        },
-    }))
-})
-```
+**Livewire:** one component, nothing to build:
 
 ```blade
-<div wire:ignore x-data="richEditor('body')"><div x-ref="editor"></div></div>
+<x-collaboration::editor field="body" class="prose" />
+<x-collaboration::editor field="body" images />   {{-- with image uploads --}}
 ```
 
-The property holding a rich text field can receive either HTML or TipTap's JSON, so type it `array|string|null`. The [demo](demo/resources/js/livewire.js) has the complete editor.
+The property holding a rich text field receives TipTap's JSON as people type, so type it `array|string|null`. To use your own TipTap setup instead, add the `Collaborative` extension to it; `Collaboration.whenReady(element, (room) => …)` hands you the component's room.
 
 **Any other page:** the framework-free client works with plain DOM elements:
 
@@ -301,6 +283,18 @@ const room = new Room(config)   // the `Collaboration::room()` array, rendered i
 bindTextField(room, 'title', document.querySelector('#title'))
 ```
 
+### Images in rich text
+
+With `Features::uploads()` on, pasted or dropped images are uploaded at once, so everybody sees them. Add TipTap's Image extension and turn it on:
+
+```jsx
+import Image from '@tiptap/extension-image'
+
+<CollaborativeEditor form={form} field="body" extensions={[StarterKit, Image]} images />
+```
+
+Images are stored on the `public` disk (`uploads_disk` in the config). One that no saved record ends up using is deleted by `collaboration:prune-uploads`, which runs daily.
+
 ## Saving
 
 `update()` saves the record with what the form submitted and everybody's latest edits:
@@ -308,6 +302,10 @@ bindTextField(room, 'title', document.querySelector('#title'))
 ```php
 $post->collaboration()->update($validated);
 ```
+
+**When somebody else saves**, every open form hears it ("Bob saved"). Live fields already show everybody's edits. Other fields take the saved values if this person hasn't changed them. Livewire, React and Vue all do this for you.
+
+**When two people change the same field**, outside the live fields, the second save stops with a message on the field: *"Bob also changed Category. Choose which version to keep, then save again."* Show the choice with `<Conflicts form={form} />` (React), `<Conflicts :form="form" />` (Vue) or `<x-collaboration::conflicts :conflicts="$collaborationConflicts" />` (Livewire). A field only one of them changed keeps that change: a stale form never overwrites what somebody else saved.
 
 When saving is more than an update, use `save()` with a closure. It receives the merged values:
 
@@ -347,6 +345,134 @@ Collaboration::room($post)
 ```
 
 A field cast to an enum only takes its cases, without `allowed`. A locked field is read-only for everybody else while somebody is in it, and says who: for fields where merging two people's changes makes no sense.
+
+### Repeaters
+
+A list of items people add, remove, reorder and edit together, kept as a JSON column:
+
+```php
+Collaboration::room($invoice)->items('lines', text: ['description']);   // or 'lines' => 'items' in $collaborative
+```
+
+Sub-fields named in `text` merge by character, with carets; the others take the latest change. Each item is saved with a `key`, so it keeps its identity from one save to the next.
+
+```jsx
+// React
+const lines = form.items('lines')
+
+{lines.list.map((line) => (
+    <div key={line.key}>
+        <input {...lines.field(line.key, 'description')} />
+        <button type="button" onClick={() => lines.remove(line.key)}>Remove</button>
+    </div>
+))}
+<button type="button" onClick={() => lines.add({ description: '', quantity: 1 })}>Add a line</button>
+```
+
+```vue
+<!-- Vue -->
+<div v-for="line in form.lines" :key="line.key">
+    <input v-model="line.description" v-collaborate="form.items('lines').field(line.key, 'description')">
+</div>
+<button type="button" @click="form.items('lines').add({ description: '' })">Add a line</button>
+```
+
+```blade
+{{-- Livewire --}}
+@foreach ($lines as $index => $line)
+    <input wire:model="lines.{{ $index }}.description" wire:key="{{ $line['key'] }}">
+@endforeach
+<button type="button" x-on:click="Collaboration.items($el, 'lines').add({ description: '' })">Add a line</button>
+```
+
+### Create pages
+
+Before a record exists there is nothing to merge yet, but people can still see who else is creating one:
+
+```php
+Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post::class)]);
+```
+
+The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
+
+### Optional features
+
+Comments, version history and image uploads are optional. Turn on the ones you want in a service provider. A feature that is off registers no routes, creates no table, and ships no script:
+
+```php
+use SolutionForest\Collaboration\Features;
+
+Collaboration::features([Features::comments(), Features::history(), Features::uploads()]);
+```
+
+Their components have their own imports too, so an app without them doesn't bundle them.
+
+### Comments and @mentions
+
+With `Features::comments()` on, people can comment on a record, or on one field of it, and resolve comments when they're done:
+
+```jsx
+import { Comments } from '@solutionforest/laravel-collaboration/react/comments'   // Vue: …/vue/comments
+
+<Comments form={form} />                 // Vue: <Comments :form="form" />
+<Comments form={form} field="title" />   // only the title's comments
+```
+
+```blade
+<x-collaboration::comments />            {{-- Livewire, inside the component --}}
+```
+
+`useComments(form)` gives the list and `post()`, `resolve()` and `reopen()` for your own UI. Say who may be mentioned, and send your own notifications from the `CommentPosted` event:
+
+```php
+Collaboration::mentionUsersUsing(fn (Post $post) => $post->team->users);
+
+Event::listen(CommentPosted::class, fn (CommentPosted $event) => /* notify each of $event->comment->mentions */);
+```
+
+### Version history
+
+The shared draft keeps versions while people edit, every few minutes, and at each save. With `Features::history()` on, show them, and let editors bring one back for everybody:
+
+```jsx
+import { History } from '@solutionforest/laravel-collaboration/react/history'     // Vue: …/vue/history
+
+<History form={form} />                  // Vue: <History :form="form" />
+```
+
+```blade
+<x-collaboration::history />             {{-- Livewire --}}
+```
+
+Restoring keeps the draft as it was in the history too, so it can be undone. `useVersions(form)` gives the list and `restore()` for your own UI.
+
+### Following a colleague
+
+Click somebody's face in the avatars to follow them: the page brings whichever field they are in into view as they move. Click again, or do anything yourself, to stop. In code: `form.collaboration.follow(person.client)`.
+
+### Who is on each record of a list
+
+Show, in a list or a table, who is on each record right now:
+
+```php
+Inertia::render('Posts/Index', ['posts' => $posts, 'presence' => Collaboration::presence($posts)]);
+```
+
+```jsx
+const presence = useRecordPresence(props.presence)          // React; Vue: useRecordPresence(() => props.presence)
+
+<RecordPeople presence={presence} record={post.id} />
+```
+
+```blade
+<x-collaboration::record-presence :presence="Collaboration::presence($posts)">
+    @foreach ($posts as $post)
+        <tr><td>{{ $post->title }}</td><td><x-collaboration::record-people :record="$post->id" /></td></tr>
+    @endforeach
+</x-collaboration::record-presence>
+```
+
+Only records this person may `view` are included, and the faces refresh every few seconds.
 
 ### Typos are caught
 
@@ -390,6 +516,26 @@ Deployment settings live in `config/collaboration.php`. Publish it with `php art
 | `presence_timeout` | `COLLABORATION_PRESENCE_TIMEOUT` | `20` | Seconds without a heartbeat before someone disappears |
 | `token_lifetime` | `COLLABORATION_TOKEN_LIFETIME` | `900` | Seconds a page's token is valid. Pages renew it themselves. |
 | `rate_limit` | `COLLABORATION_RATE_LIMIT` | `2400` | Sync requests per user per minute, across their tabs |
+
+### Your own design
+
+The package adds one small stylesheet. To style everything yourself, turn it off with `Collaboration::withoutStyles()`, or `withoutStyles()` from `@solutionforest/laravel-collaboration` in JavaScript. Every element keeps a `collab-` class name to style: `collab-avatars`, `collab-avatar`, `collab-caret`, `collab-field-person`, `collab-comments`, `collab-history`, `collab-conflicts` and so on.
+
+To draw the faces or the field labels with your own components:
+
+```jsx
+<Avatars form={form}>
+    {({ shown, more, follow }) => shown.map((person) => <MyAvatar key={person.client} person={person} onClick={() => follow(person.client)} />)}
+</Avatars>
+```
+
+```vue
+<Avatars :form="form" v-slot="{ shown, follow }">
+    <MyAvatar v-for="person in shown" :key="person.client" :person="person" @click="follow(person.client)" />
+</Avatars>
+```
+
+`useCollaboration()`, `useComments()` and `useVersions()` give the data without any markup.
 
 ### Pushing changes with Reverb
 

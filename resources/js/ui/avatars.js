@@ -5,16 +5,29 @@ import { addStyles } from './styles.js'
  * component of their own.
  *
  * @param {Person[]} people
- * @param {{limit?: number, strings?: Record<string, string>, labels?: Record<string, string>}} [options]
+ * @param {{limit?: number, strings?: Record<string, string>, labels?: Record<string, string>, following?: number | null, onFollow?: ((client: number) => void) | null}} [options]
  */
-export function renderAvatars(people, { limit = 5, strings = {}, labels = {} } = {}) {
+export function renderAvatars(people, { limit = 5, strings = {}, labels = {}, following = null, onFollow = null } = {}) {
     addStyles()
 
     const list = document.createElement('div')
 
     list.className = 'collab-avatars'
 
-    for (const person of people.slice(0, limit)) list.append(avatar(person, describe(person, strings, labels)))
+    for (const person of people.slice(0, limit)) {
+        const face = avatar(person, describe(person, strings, labels))
+
+        // A face to click: follow that person from field to field.
+        if (onFollow) {
+            face.setAttribute('role', 'button')
+            face.tabIndex = 0
+            face.dataset.collabFollow = ''
+            face.toggleAttribute('data-following', following === person.client)
+            face.addEventListener('click', () => onFollow(person.client))
+        }
+
+        list.append(face)
+    }
 
     if (people.length > limit) {
         const more = document.createElement('span')

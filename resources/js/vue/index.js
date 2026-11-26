@@ -2,6 +2,10 @@ import { router, useForm } from '@inertiajs/vue3'
 import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { bindItems } from '../bindings/items.js'
+import { FormMemory } from '../core/form-memory.js'
+import { listOps, toList } from '../core/items.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
 import { avatarsOf, peopleIn } from '../ui/people.js'
@@ -22,6 +26,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
     const room = shallowRef(/** @type {Room | null} */ (null))
     const people = ref(/** @type {Person[]} */ ([]))
     const status = ref('connecting')
+    const following = ref(/** @type {number | null} */ (null))
     const initial = typeof window === 'undefined' ? null : config()
 
     // Joined during setup, so directives on the component's inputs find the room when they mount.
@@ -30,6 +35,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
 
         joined.on('people', (list) => (people.value = [...list]))
         joined.on('status', (value) => (status.value = value))
+        joined.on('following', (client) => (following.value = client))
         joined.on('expired', () => router.reload({ only: [prop], headers: { 'X-Collaboration-Client': String(joined.config.client) } }))
 
         room.value = joined
@@ -50,6 +56,9 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
         status,
         peopleIn: (/** @type {string} */ field) => peopleIn(people.value, field),
         isLive: (/** @type {string} */ field) => room.value?.isLiveField(field) ?? false,
+        following,
+        /** Follow a colleague from field to field; again, or null, to stop. */
+        follow: (/** @type {number | null} */ client) => room.value?.follow(client),
     }
 }
 
@@ -81,19 +90,90 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     // Others' edits, into the form's state.
     const stop = room.value?.on('change', ({ field, value }) => {
-        if (field in data) form[field] = value ?? (typeof data[field] === 'string' ? '' : null)
+        if (!(field in data)) return
+
+        // A repeater's items are a list in the form, keyed in the draft.
+        form[field] = room.value?.config.fields[field] === 'items' ? toList(value) : value ?? (typeof data[field] === 'string' ? '' : null)
     })
 
     onScopeDispose(() => stop?.())
 
-    // Every save carries the edits the server has not seen yet, after the app's own transform.
-    form.transform((values) => ({ ...transform(values), [config()?.input ?? '_collaboration']: room.value?.payload() ?? '' }))
+    // What each field held when the form loaded or was last saved, to tell this person's changes from others'.
+    const memory = room.value ? new FormMemory(room.value, form.data()) : null
+    const conflicts = ref(/** @type {import('../core/form-memory.js').Conflict[]} */ ([]))
+
+    // Somebody else saved: their values go into the fields this person left alone.
+    const stopSaved = room.value?.on('saved', async ({ name }) => {
+        const { take, conflicts: found } = (await memory?.pull(form.data(), name)) ?? { take: {}, conflicts: [] }
+
+        Object.assign(form, take)
+        conflicts.value = [...found]
+    })
+
+    onScopeDispose(() => stopSaved?.())
+
+    // A save refused, perhaps because somebody else saved these fields: find out which.
+    watch(() => form.hasErrors, (hasErrors) => {
+        if (!hasErrors || !memory) return
+
+        memory.pull(form.data(), memory.conflicts[0]?.name ?? null).then(({ conflicts: found }) => (conflicts.value = [...found])).catch(() => {})
+    })
+
+    // This person saved: what the form holds is the new base.
+    watch(() => form.wasSuccessful, (successful) => {
+        if (!successful) return
+
+        memory?.saved(form.data())
+        conflicts.value = []
+    })
+
+    // Every save carries the edits the server has not seen yet, and the form's base, after the app's own transform.
+    form.transform((values) => ({
+        ...transform(values),
+        [config()?.input ?? '_collaboration']: room.value?.payload() ?? '',
+        [`${config()?.input ?? '_collaboration'}_base`]: memory?.payload() ?? '',
+    }))
 
     // Under one key, so nothing collides with the form's own fields.
     return Object.assign(form, {
-        collaboration,
+        collaboration: {
+            ...collaboration,
+            conflicts,
+            /** Settle a field somebody else saved too: keep this person's value. */
+            keepMine: (/** @type {string} */ name) => {
+                memory?.keepMine(name)
+                conflicts.value = [...(memory?.conflicts ?? [])]
+            },
+            /** Or take theirs. */
+            useTheirs: (/** @type {string} */ name) => {
+                form[name] = memory?.useTheirs(name)
+                conflicts.value = [...(memory?.conflicts ?? [])]
+            },
+        },
         /** What `v-collaborate` binds: `v-collaborate="form.field('title')"`. */
         field: (/** @type {keyof TForm & string} */ name) => ({ form, name }),
+        /**
+         * A repeater: its list, what changes it, and what `v-collaborate` binds for each sub-field:
+         *
+         *     <input v-model="line.title" v-collaborate="form.items('lines').field(line.key, 'title')">
+         */
+        items: (/** @type {keyof TForm & string} */ name) => {
+            const list = () => /** @type {import('../core/items.js').Item[]} */ (form[name] ?? [])
+            const change = (/** @type {import('../core/items.js').Item[]} */ next) => {
+                form[name] = next
+                repeaterOf(room.value, name, form)?.change(next)
+            }
+
+            return {
+                get list() {
+                    return list()
+                },
+                add: (/** @type {Record<string, any>} */ item = {}) => change(listOps.add(list(), item)),
+                remove: (/** @type {string} */ key) => change(listOps.remove(list(), key)),
+                move: (/** @type {string} */ key, /** @type {number} */ to) => change(listOps.move(list(), key, to)),
+                field: (/** @type {string} */ key, /** @type {string} */ path) => ({ form, name, key, path }),
+            }
+        },
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
             transform = callback
@@ -131,11 +211,43 @@ function connect(element, binding) {
     const field = binding.arg ?? binding.value?.name ?? ''
     const room = /** @type {Room | null} */ (unref(form?.collaboration?.room) ?? null)
 
-    if (!room || !field || bound.has(element)) return
+    // A form field outside the room is an ordinary input.
+    if (!room || !field || bound.has(element) || !(field in room.config.fields || field in (room.config.labels ?? {}))) return
+
+    // An item's sub-field, in a repeater.
+    if (binding.value?.key !== undefined) {
+        const repeater = repeaterOf(room, field, form)
+
+        if (repeater) bound.set(element, repeater.attach(binding.value.key, binding.value.path, element))
+
+        return
+    }
 
     bound.set(element, room.config.fields[field] === 'text' && isTextInput(element)
         ? bindTextField(room, field, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => (form[field] = value) })
         : bindChoice(room, field, element, form))
+}
+
+/** @type {WeakMap<Room, Map<string, ReturnType<typeof bindItems>>>} each room's repeaters */
+const repeaters = new WeakMap()
+
+/**
+ * The binding of one repeater, made once per room and field.
+ *
+ * @param {Room | null} room
+ * @param {string} field
+ * @param {Record<string, any>} form
+ */
+function repeaterOf(room, field, form) {
+    if (!room || room.config.fields[field] !== 'items') return null
+
+    const known = repeaters.get(room) ?? new Map()
+
+    repeaters.set(room, known)
+
+    if (!known.has(field)) known.set(field, bindItems(room, field, { onValueChange: (list) => (form[field] = list) }))
+
+    return known.get(field) ?? null
 }
 
 /**
@@ -150,7 +262,12 @@ function connect(element, binding) {
 function bindChoice(room, field, element, form) {
     const events = new AbortController()
     const { signal } = events
-    const unlock = lockWhileEditing(room, field, element)
+    const lock = lockWhileEditing(room, field, element)
+    const unbind = room.bind(field, { reveal: () => element.scrollIntoView({ block: 'center', behavior: 'smooth' }) })
+    const unlock = () => {
+        lock()
+        unbind()
+    }
 
     // After `v-model`'s own listener, so the form already holds the new value.
     element.addEventListener('change', () => room.change(field, form[field]), { signal })
@@ -173,25 +290,40 @@ const presenceProps = {
 const collaborationOf = (props) => {
     const source = props.collaboration ?? props.form?.collaboration ?? {}
 
-    return { room: unref(source.room) ?? null, people: unref(source.people) ?? [], status: unref(source.status) ?? 'connecting' }
+    return { room: unref(source.room) ?? null, people: unref(source.people) ?? [], status: unref(source.status) ?? 'connecting', following: unref(source.following) ?? null }
 }
 
-/** The faces of everybody else in the room: `<Avatars :form="form" />`. */
+/**
+ * The faces of everybody else in the room: `<Avatars :form="form" />`. Its
+ * default slot draws them yourself: `<template #default="{ shown, more, follow }">`.
+ */
 export const Avatars = defineComponent({
     name: 'CollaborationAvatars',
     props: { ...presenceProps, limit: { type: Number, default: null } },
-    setup(props) {
+    setup(props, { slots }) {
         addStyles()
 
         return () => {
-            const { room, people } = collaborationOf(props)
+            const { room, people, following } = collaborationOf(props)
             const config = room?.config
             const { shown, more } = avatarsOf(people, props.limit ?? config?.avatarLimit)
 
+            if (slots.default) return slots.default({ shown, more, following, follow: (/** @type {number} */ client) => room?.follow(client) })
+
             return h('div', { class: 'collab-avatars', title: people.length ? undefined : config?.strings?.alone }, [
                 ...shown.map((person) => h(
-                    'span',
-                    { key: person.client, class: 'collab-avatar', title: describe(person, config?.strings, config?.labels), 'data-idle': person.idle || undefined, style: { background: person.color } },
+                    'button',
+                    {
+                        key: person.client,
+                        type: 'button',
+                        class: 'collab-avatar',
+                        title: describe(person, config?.strings, config?.labels),
+                        'data-idle': person.idle || undefined,
+                        'data-following': following === person.client || undefined,
+                        'data-collab-follow': '',
+                        onClick: () => room?.follow(person.client),
+                        style: { background: person.color },
+                    },
                     person.avatar ? [h('img', { src: person.avatar, alt: '', referrerpolicy: 'no-referrer' })] : person.initials,
                 )),
                 more ? h('span', { class: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
@@ -200,14 +332,14 @@ export const Avatars = defineComponent({
     },
 })
 
-/** Who is in a field right now: `<FieldPeople :form="form" field="title" />`. */
+/** Who is in a field right now: `<FieldPeople :form="form" field="title" />`; its default slot gets `{ people }`. */
 export const FieldPeople = defineComponent({
     name: 'CollaborationFieldPeople',
     props: { ...presenceProps, field: { type: String, required: true } },
-    setup(props) {
+    setup(props, { slots }) {
         addStyles()
 
-        return () => h('span', { class: 'collab-field-people' }, peopleIn(collaborationOf(props).people, props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
+        return () => slots.default ? slots.default({ people: peopleIn(collaborationOf(props).people, props.field) }) : h('span', { class: 'collab-field-people' }, peopleIn(collaborationOf(props).people, props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
     },
 })
 
@@ -237,6 +369,75 @@ export const Status = defineComponent({
             const { status } = collaborationOf(props)
 
             return h('span', { 'data-status': status }, notice.value ?? strings.value[status] ?? '')
+        }
+    },
+})
+
+/** Fields somebody else saved while this person changed them too: `<Conflicts :form="form" />`. */
+export const Conflicts = defineComponent({
+    name: 'CollaborationConflicts',
+    props: { form: { type: Object, required: true } },
+    setup(props) {
+        addStyles()
+
+        return () => {
+            const { conflicts, keepMine, useTheirs, room } = props.form.collaboration
+            const strings = unref(room)?.config.strings ?? {}
+            const labels = unref(room)?.config.labels ?? {}
+            const list = unref(conflicts) ?? []
+
+            if (!list.length) return null
+
+            return h('div', { class: 'collab-conflicts', role: 'alert' }, list.map((conflict) => {
+                const name = conflict.name ?? strings.someone ?? 'Someone'
+                const theirs = conflict.theirs === null || conflict.theirs === undefined ? '' : typeof conflict.theirs === 'object' ? JSON.stringify(conflict.theirs) : String(conflict.theirs)
+
+                return h('div', { key: conflict.field, class: 'collab-conflict' }, [
+                    h('p', translate(strings.conflict ?? ':name also changed :field.', { name, field: labels[conflict.field] ?? conflict.field })),
+                    h('p', { class: 'collab-conflict-theirs' }, theirs),
+                    h('button', { type: 'button', onClick: () => keepMine(conflict.field) }, strings.keep_mine ?? 'Keep mine'),
+                    h('button', { type: 'button', onClick: () => useTheirs(conflict.field) }, translate(strings.use_theirs ?? 'Use theirs', { name })),
+                ])
+            }))
+        }
+    },
+})
+
+/**
+ * Who is on each record of a list, from `Collaboration::presence($posts)`:
+ *
+ *     const presence = useRecordPresence(() => props.presence)
+ *
+ *     <RecordPeople :presence="presence" :record="post.id" />
+ *
+ * @param {() => any} config
+ */
+export function useRecordPresence(config) {
+    const initial = config()
+    const people = ref(/** @type {Record<string, Person[]>} */ (initial?.people ?? {}))
+    const presence = initial && typeof window !== 'undefined' ? new RecordPresence(initial) : null
+
+    presence?.on('people', (next) => (people.value = { ...next }))
+    onBeforeUnmount(() => presence?.destroy())
+
+    return { people, peopleOn: (/** @type {string | number} */ key) => people.value[String(key)] ?? [] }
+}
+
+/** The faces of everybody on one record of a list: `<RecordPeople :presence="presence" :record="post.id" />`. */
+export const RecordPeople = defineComponent({
+    name: 'CollaborationRecordPeople',
+    props: { presence: { type: Object, required: true }, record: { type: [String, Number], required: true }, limit: { type: Number, default: 3 } },
+    setup(props) {
+        addStyles()
+
+        return () => {
+            const { shown, more } = avatarsOf(props.presence.peopleOn(props.record), props.limit)
+
+            return h('span', { class: 'collab-avatars' }, [
+                ...shown.map((person) => h('span', { key: person.key, class: 'collab-avatar', title: person.name, 'data-idle': person.idle || undefined, style: { background: person.color } },
+                    person.avatar ? [h('img', { src: person.avatar, alt: '', referrerpolicy: 'no-referrer' })] : person.initials)),
+                more ? h('span', { class: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
+            ])
         }
     },
 })

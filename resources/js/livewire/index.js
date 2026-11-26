@@ -1,8 +1,12 @@
 import { bindTextField } from '../bindings/text-field.js'
 import { bindValueField } from '../bindings/value-field.js'
 import { isTextInput } from '../bindings/lock.js'
+import { bindItems } from '../bindings/items.js'
+import { listOps, toList } from '../core/items.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
+import { peopleIn } from '../ui/people.js'
 
 /**
  * The Livewire adapter. `<x-collaboration::room>` renders an element with the
@@ -16,6 +20,9 @@ const rooms = new Map()
 class LivewireRoom {
     /** @type {Map<string, {elements: Element[], unbind: () => void}>} */
     bound = new Map()
+
+    /** @type {Map<string, {binding: ReturnType<typeof bindItems>, inputs: Map<Element, () => void>}>} each repeater, and its attached inputs */
+    repeaters = new Map()
     published = ''
 
     /**
@@ -31,10 +38,16 @@ class LivewireRoom {
 
         this.room.on('ready', () => this.bind())
         this.room.on('people', () => this.render())
+        this.room.on('following', () => this.render())
         this.room.on('status', () => (this.render(), this.publish()))
         this.room.on('change', () => this.publish())
         this.room.on('expired', () => this.wire.$refresh())
-        this.room.on('saved', ({ name }) => this.notice(translate(config.strings.saved ?? ':name saved', { name: name ?? '' })))
+        this.room.on('saved', ({ name }) => {
+            this.notice(translate(config.strings.saved ?? ':name saved', { name: name ?? '' }))
+
+            // Their values, into the fields this person left alone.
+            this.wire.call('pullCollaboration')
+        })
 
         this.events = new AbortController()
 
@@ -58,6 +71,12 @@ class LivewireRoom {
         if (!this.room.isReady) return
 
         for (const [field, kind] of Object.entries(this.room.config.fields)) {
+            if (kind === 'items') {
+                this.bindItems(field)
+
+                continue
+            }
+
             const elements = this.inputsFor(field)
             const known = this.bound.get(field)
 
@@ -81,6 +100,64 @@ class LivewireRoom {
         }
 
         this.publish()
+    }
+
+    /**
+     * A repeater's inputs: `wire:model="lines.0.title"`, bound to the item at that place.
+     *
+     * @param {string} field
+     */
+    bindItems(field) {
+        const path = this.statePath + field
+        const repeater = this.repeaters.get(field) ?? {
+            binding: bindItems(this.room, field, {
+                // A new or removed item needs its row rendered; an edited one only the state.
+                onValueChange: (list) => this.wire.$set(path, list, toList(this.wire.get(path) ?? []).map((item) => item.key).join() !== list.map((item) => item.key).join()),
+            }),
+            inputs: new Map(),
+        }
+
+        this.repeaters.set(field, repeater)
+
+        const rows = /** @type {Array<{key?: string}>} */ (this.wire.get(path) ?? [])
+        const pattern = new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(\\d+)\\.(.+)$`)
+        const present = new Set()
+
+        for (const element of this.component.querySelectorAll('input, textarea, select')) {
+            const model = [...element.attributes].find((attribute) => attribute.name.startsWith('wire:model'))?.value ?? ''
+            const [, index, sub] = model.match(pattern) ?? []
+            const key = index === undefined ? undefined : rows[Number(index)]?.key
+
+            if (!key || !sub || element.closest('[wire\\:id]') !== this.component) continue
+
+            present.add(element)
+
+            if (!repeater.inputs.has(element)) repeater.inputs.set(element, repeater.binding.attach(key, sub, /** @type {HTMLInputElement} */ (element)))
+        }
+
+        for (const [element, detach] of repeater.inputs) {
+            if (present.has(element)) continue
+
+            detach()
+            repeater.inputs.delete(element)
+        }
+    }
+
+    /**
+     * Adds, removes or moves a repeater's items for everybody:
+     * `x-on:click="Collaboration.items($el, 'lines').add({ title: '' })"`.
+     *
+     * @param {string} field
+     */
+    items(field) {
+        const repeater = this.repeaters.get(field)
+        const list = () => toList(/** @type {any} */ (this.room.value(field)))
+
+        return {
+            add: (/** @type {Record<string, any>} */ item = {}) => repeater?.binding.change(listOps.add(list(), item)),
+            remove: (/** @type {string} */ key) => repeater?.binding.change(listOps.remove(list(), key)),
+            move: (/** @type {string} */ key, /** @type {number} */ to) => repeater?.binding.change(listOps.move(list(), key, to)),
+        }
     }
 
     /**
@@ -116,10 +193,21 @@ class LivewireRoom {
         const status = this.el.querySelector('[data-collab-status]')
         const { strings, labels, avatarLimit } = this.room.config
 
-        presence?.replaceChildren(renderAvatars(this.room.people, { limit: avatarLimit, strings, labels }))
+        presence?.replaceChildren(renderAvatars(this.room.people, { limit: avatarLimit, strings, labels, following: this.room.following, onFollow: (client) => this.room.follow(client) }))
         presence?.setAttribute('title', this.room.people.map((person) => describe(person, strings, labels)).join('\n') || (strings.alone ?? ''))
 
         if (status && !this.noticeTimer) status.textContent = strings[this.room.status] ?? ''
+
+        // `<x-collaboration::field-people>`: who is in each field.
+        for (const spot of this.component.querySelectorAll(/** @type {'span'} */ ('[data-collab-people]'))) {
+            spot.replaceChildren(...peopleIn(this.room.people, spot.dataset.collabPeople ?? '').map((person) => {
+                const label = Object.assign(document.createElement('span'), { className: 'collab-field-person', textContent: person.name })
+
+                label.style.background = person.color
+
+                return label
+            }))
+        }
 
         this.el.dataset.status = this.room.status
     }
@@ -141,6 +229,7 @@ class LivewireRoom {
     destroy() {
         this.events.abort()
         this.bound.forEach(({ unbind }) => unbind())
+        this.repeaters.forEach(({ binding }) => binding.destroy())
         this.room.destroy()
     }
 }
@@ -224,11 +313,52 @@ function whenReady(element, callback) {
 
 const queued = window.Collaboration?.queue ?? []
 
-window.Collaboration = { rooms, roomFor, whenReady, Room }
+/**
+ * A Livewire repeater's buttons: `Collaboration.items($el, 'lines').add({ title: '' })`.
+ *
+ * @param {Element} element
+ * @param {string} field
+ */
+function items(element, field) {
+    const component = element.closest('[wire\\:id]')
+    const entry = [...rooms.values()].find((item) => item.component === component)
+
+    return entry?.items(field) ?? { add() {}, remove() {}, move() {} }
+}
+
+window.Collaboration = { rooms, roomFor, whenReady, items, Room }
 
 // Calls made before this script loaded, kept by the stub `<x-collaboration::room>` renders.
 queued.forEach(([element, callback]) => whenReady(element, callback))
 
+/** @type {Map<HTMLElement, RecordPresence>} lists showing who is on each record */
+const lists = new Map()
+
+/** Fills each `<x-collaboration::record-people>` of each `<x-collaboration::record-presence>`. */
+function scanLists() {
+    for (const el of document.querySelectorAll(/** @type {'div'} */ ('[data-collab-records]'))) {
+        if (lists.has(el)) continue
+
+        const presence = new RecordPresence(JSON.parse(el.dataset.collabRecords ?? '{}'))
+        const render = () => el.querySelectorAll(/** @type {'span'} */ ('[data-collab-record]')).forEach((spot) => {
+            spot.replaceChildren(renderAvatars(presence.peopleOn(spot.dataset.collabRecord ?? ''), { limit: 3 }))
+        })
+
+        presence.on('people', render)
+        lists.set(el, presence)
+        render()
+    }
+
+    for (const [el, presence] of lists) {
+        if (el.isConnected) continue
+
+        presence.destroy()
+        lists.delete(el)
+    }
+}
+
+document.addEventListener('livewire:initialized', scanLists)
+setInterval(scanLists, 1000)
 document.addEventListener('livewire:initialized', scan)
 document.addEventListener('livewire:navigated', scan)
 setInterval(scan, 300)
