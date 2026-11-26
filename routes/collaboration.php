@@ -8,6 +8,7 @@ use SolutionForest\Collaboration\Http\Controllers\CommentController;
 use SolutionForest\Collaboration\Http\Controllers\PresenceController;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
+use SolutionForest\Collaboration\Http\Controllers\UploadController;
 use SolutionForest\Collaboration\Http\Controllers\ValuesController;
 use SolutionForest\Collaboration\Http\Controllers\VersionController;
 use SolutionForest\Collaboration\Http\Middleware\KeepSessionReadOnly;
@@ -32,4 +33,5 @@ Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->na
     Route::post('comments/reopen', [CommentController::class, 'reopen'])->name('comments.reopen');
     Route::post('versions', [VersionController::class, 'index'])->name('versions');
     Route::post('versions/restore', [VersionController::class, 'restore'])->name('versions.restore');
+    Route::post('uploads', UploadController::class)->name('uploads');
 });

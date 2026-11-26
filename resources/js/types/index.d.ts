@@ -105,6 +105,8 @@ export class Room {
     readonly following: number | null
     /** Follow a colleague; again, or null, to stop. */
     follow(client: number | null): void
+    /** Stores an image for a rich text field; resolves to its URL. */
+    upload(file: File, field: string): Promise<string>
     /** Asks the server something about this room, such as `room.call('comments')`. */
     call<T = any>(endpoint: string, payload?: Record<string, unknown>): Promise<T>
     /** What a form sends when it is saved; `Room::save()` reads it. */

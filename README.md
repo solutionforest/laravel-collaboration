@@ -301,6 +301,18 @@ const room = new Room(config)   // the `Collaboration::room()` array, rendered i
 bindTextField(room, 'title', document.querySelector('#title'))
 ```
 
+### Images in rich text
+
+Pasted or dropped images are uploaded at once, so everybody sees them. Add TipTap's Image extension and turn it on:
+
+```jsx
+import Image from '@tiptap/extension-image'
+
+<CollaborativeEditor form={form} field="body" extensions={[StarterKit, Image]} images />
+```
+
+Images are stored on the `public` disk (`uploads_disk` in the config). One that no saved record ends up using is deleted by `collaboration:prune-uploads`, which runs daily.
+
 ## Saving
 
 `update()` saves the record with what the form submitted and everybody's latest edits:

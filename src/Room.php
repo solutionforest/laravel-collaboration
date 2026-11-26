@@ -17,6 +17,7 @@ use SolutionForest\Collaboration\Crdt\Html;
 use SolutionForest\Collaboration\Documents\DocumentRepository;
 use SolutionForest\Collaboration\Documents\EditTrail;
 use SolutionForest\Collaboration\Documents\SharedField;
+use SolutionForest\Collaboration\Documents\SharedUploads;
 use SolutionForest\Collaboration\Enums\FieldKind;
 use SolutionForest\Collaboration\Enums\PresenceMode;
 use SolutionForest\Collaboration\Exceptions\SaveConflict;
@@ -354,6 +355,9 @@ final class Room implements Arrayable, JsonSerializable
             $this->record->refresh();
             $this->markSaved($context, $live, $mine);
 
+            // Images the record now holds are the record's, no longer the draft's.
+            app(SharedUploads::class)->release($this->draft());
+
             return $result;
         });
     }
@@ -676,7 +680,7 @@ final class Room implements Arrayable, JsonSerializable
     {
         $endpoints = [];
 
-        foreach (['values', 'comments', 'comments.store', 'comments.resolve', 'comments.reopen', 'versions', 'versions.restore'] as $name) {
+        foreach (['values', 'comments', 'comments.store', 'comments.resolve', 'comments.reopen', 'versions', 'versions.restore', 'uploads'] as $name) {
             if (app('router')->has("collaboration.{$name}")) {
                 $endpoints[$name] = route("collaboration.{$name}");
             }

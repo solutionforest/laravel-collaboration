@@ -10,12 +10,14 @@ export const CollaborativeEditor = defineComponent({
         form: { type: Object, required: true },
         field: { type: String, required: true },
         extensions: { type: Array, default: () => [StarterKit] },
+        /** Upload images pasted or dropped in: add TipTap's Image to `extensions`. */
+        images: { type: Boolean, default: false },
     },
     setup(props) {
         const { room } = props.form.collaboration
 
         const editor = shallowRef(new Editor({
-            extensions: [...props.extensions, ...(room ? [Collaborative.configure({ room, field: props.field })] : [])],
+            extensions: [...props.extensions, ...(room ? [Collaborative.configure({ room, field: props.field, images: props.images })] : [])],
             content: props.form[props.field] || '',
             onUpdate: ({ editor: updated }) => (props.form[props.field] = updated.getJSON()),
         }))

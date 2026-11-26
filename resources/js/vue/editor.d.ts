@@ -7,4 +7,5 @@ export const CollaborativeEditor: DefineComponent<{
     field: string
     /** StarterKit by default. */
     extensions?: AnyExtension[]
+    images?: boolean
 }>

@@ -20,11 +20,13 @@ export const Collaborative = Extension.create({
             /** @type {import('../core/room.js').Room | null} */
             room: null,
             field: '',
+            /** Upload images pasted or dropped into the editor. Needs TipTap's Image extension. */
+            images: false,
         }
     },
 
     addProseMirrorPlugins() {
-        const { room, field } = this.options
+        const { room, field, images } = this.options
 
         if (!room || !field) return []
 
@@ -96,6 +98,8 @@ export const Collaborative = Extension.create({
                         focus: () => (room.focus(field), false),
                         blur: () => (room.blur(field), false),
                     },
+                    handlePaste: (view, event) => images && insertImages(room, field, view, [...(event.clipboardData?.files ?? [])]),
+                    handleDrop: (view, event) => images && insertImages(room, field, view, [...(/** @type {DragEvent} */ (event).dataTransfer?.files ?? [])]),
                 },
                 appendTransaction(transactions, _old, state) {
                     const isLocal = transactions.some((transaction) => transaction.docChanged && !transaction.getMeta(key))
@@ -109,6 +113,30 @@ export const Collaborative = Extension.create({
         ]
     },
 })
+
+/**
+ * Uploads the images among some files, and puts each into the editor where
+ * the caret is once it is stored. Returns whether there were any.
+ *
+ * @param {import('../core/room.js').Room} room
+ * @param {string} field
+ * @param {import('@tiptap/pm/view').EditorView} view
+ * @param {File[]} files
+ */
+function insertImages(room, field, view, files) {
+    const pictures = files.filter((file) => file.type.startsWith('image/'))
+    const image = view.state.schema.nodes.image
+
+    if (!pictures.length || !image) return false
+
+    for (const file of pictures) {
+        room.upload(file, field).then((src) => {
+            if (!view.isDestroyed) view.dispatch(view.state.tr.replaceSelectionWith(image.create({ src, alt: file.name })))
+        }).catch((error) => console.warn(error))
+    }
+
+    return true
+}
 
 /**
  * Other people's carets and selections, drawn into the document.

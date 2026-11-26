@@ -293,6 +293,31 @@ export class Room {
     }
 
     /**
+     * Stores an image for a rich text field, for everybody to see at once.
+     *
+     * @param {File} file
+     * @param {string} field
+     * @returns {Promise<string>} its URL
+     */
+    async upload(file, field) {
+        const url = this.config.endpoints?.uploads
+
+        if (!url) throw new Error('[collaboration] This room takes no uploads.')
+
+        const body = new FormData()
+
+        body.append('token', this.config.token)
+        body.append('field', field)
+        body.append('file', file)
+
+        const response = await fetch(url, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.config.csrf } })
+
+        if (!response.ok) throw new Error(`[collaboration] The image was not stored (${response.status}).`)
+
+        return (await response.json()).url
+    }
+
+    /**
      * What a form sends when it is saved, so the save includes edits the
      * server has not seen yet. `Room::save()` reads it.
      */
