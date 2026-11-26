@@ -44,12 +44,14 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           # Pages between themselves are checked above, and the site is only live after this run.
+          # The demo's address, localhost, is only up on a developer's machine.
           # Links into this repository are checked too: lychee uses the workflow's token.
           # Except the changelog's comparisons, which name a tag that is only pushed after the release is merged.
           args: >-
             --no-progress --root-dir website/.vitepress/dist
             --exclude 'solutionforest\.github\.io'
             --exclude '^file://'
+            --exclude '^https?://localhost'
             --exclude 'github\.com/solutionforest/laravel-collaboration/compare/'
             'website/.vitepress/dist/**/*.html'
           fail: true
