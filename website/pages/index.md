@@ -8,10 +8,6 @@ hero:
   name: Laravel Collaboration
   text: Google Docs-style editing for any Laravel app
   tagline: Everyone on a record sees each other, types into the same fields at once, and saves one shared draft. Livewire, Inertia + React and Inertia + Vue, with TipTap for rich text.
-  image:
-    light: /media/react.png
-    dark: /media/react.png
-    alt: An article being edited by three people
   actions:
     - theme: brand
       text: Get started

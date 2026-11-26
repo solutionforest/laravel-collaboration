@@ -251,9 +251,50 @@ function diagram(code) {
         .join('\n')
 }
 
+// Examples for Livewire, React and Vue become tabs: the README's <details> per stack,
+// and runs of code blocks in a stack's language (blade, jsx, vue), each labelled by a first-line comment.
+const stackOf = { Livewire: 'livewire', 'Inertia + React': 'react', 'Inertia + Vue': 'vue' }
+const languages = { blade: 'livewire', jsx: 'react', tsx: 'react', vue: 'vue' }
+const label = { livewire: 'Livewire', react: 'React', vue: 'Vue' }
+
+const tabs = (panels) => [
+    `<StackTabs :stacks="${JSON.stringify(panels.map(({ stack }) => stack)).replace(/"/g, "'")}">`,
+    ...panels.map(({ stack, body }) => `<template #${stack}>\n\n${body.trim()}\n\n</template>`),
+    '</StackTabs>',
+].join('\n')
+
+// "// React", "<!-- Vue -->", "{{-- Livewire, inside the component --}}": the stack's name goes, the rest stays.
+function unlabelled(block, stack) {
+    const [open, first, ...rest] = block.split('\n')
+    const comment = first.match(/^(\/\/|<!--|\{\{--) (.*?)( -->| --\}\})?$/)
+
+    if (!comment || !comment[2].startsWith(label[stack])) return block
+
+    const remark = comment[2].slice(label[stack].length).replace(/^[,:]\s*/, '')
+    const kept = remark ? [`${comment[1]} ${remark[0].toUpperCase()}${remark.slice(1)}${comment[3] ?? ''}`] : []
+
+    return [open, ...kept, ...rest].join('\n')
+}
+
+function stackTabs(markdown) {
+    return markdown
+        .replace(/(?:<details(?: open)?>\n<summary><b>(?:Livewire|Inertia \+ React|Inertia \+ Vue)<\/b><\/summary>\n[\s\S]*?<\/details>\n*)+/g, (run) => {
+            const panels = [...run.matchAll(/<summary><b>(.*?)<\/b><\/summary>\n([\s\S]*?)<\/details>/g)].map(([, name, body]) => ({ stack: stackOf[name], body }))
+
+            return tabs(panels) + '\n\n'
+        })
+        .replace(/(?:^```(?:blade|jsx|tsx|vue)\n[\s\S]*?^```\n(?:\n|(?![\s\S])))+/gm, (run) => {
+            const blocks = [...run.matchAll(/^```(\w+)\n[\s\S]*?^```$/gm)].map(([block, language]) => ({ stack: languages[language], block }))
+
+            if (new Set(blocks.map(({ stack }) => stack)).size !== blocks.length || blocks.length < 2) return run
+
+            return tabs(blocks.map(({ stack, block }) => ({ stack, body: unlabelled(block, stack) }))) + '\n\n'
+        })
+}
+
 for (const page of pages) {
     let fence = false
-    const body = page.body
+    const body = stackTabs(page.body)
         .replace(/^```mermaid\n([\s\S]*?)^```$/gm, (match, code) => `<figure class="diagram">\n${diagram(code)}\n</figure>`)
         .split('\n')
         .map((line) => {

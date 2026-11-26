@@ -99,11 +99,17 @@ export default defineConfig({
             { text: 'Integrations', link: '/integrations' },
             { text: 'How it works', link: '/how-it-works' },
             {
+                text: 'Packages',
+                items: [
+                    { text: 'Filament Collaboration: for Filament panels', link: 'https://solutionforest.github.io/filament-collaboration/' },
+                    { text: 'Laravel Collaboration: for Livewire and Inertia', link: 'https://solutionforest.github.io/laravel-collaboration/' },
+                ],
+            },
+            {
                 text: 'v0.2.2',
                 items: [
                     { text: 'Changelog', link: '/changelog' },
                     { text: 'Releases', link: `${repo}/releases` },
-                    { text: 'Filament Collaboration', link: 'https://solutionforest.github.io/filament-collaboration/' },
                 ],
             },
         ],
