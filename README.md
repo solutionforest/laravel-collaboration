@@ -261,36 +261,14 @@ Rich text fields are edited with [TipTap](https://tiptap.dev). The column decide
 
 **React and Vue:** `<CollaborativeEditor form={form} field="body" />` comes with StarterKit. Pass `extensions` to use your own.
 
-**Livewire:** add the `Collaborative` extension to a TipTap editor in an Alpine component. `Collaboration.whenReady()` hands you the component's room once it has joined:
-
-```js
-// resources/js/app.js
-import { Editor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import { Collaborative } from '@solutionforest/laravel-collaboration/tiptap'
-
-document.addEventListener('alpine:init', () => {
-    Alpine.data('richEditor', (field) => ({
-        init() {
-            Collaboration.whenReady(this.$el, (room) => {
-                // Kept out of Alpine's state: ProseMirror must not be proxied.
-                new Editor({
-                    element: this.$refs.editor,
-                    extensions: [StarterKit, Collaborative.configure({ room, field })],
-                    content: this.$wire.get(field),
-                    onUpdate: ({ editor: updated }) => this.$wire.$set(field, updated.getJSON(), false),
-                })
-            })
-        },
-    }))
-})
-```
+**Livewire:** one component, nothing to build:
 
 ```blade
-<div wire:ignore x-data="richEditor('body')"><div x-ref="editor"></div></div>
+<x-collaboration::editor field="body" class="prose" />
+<x-collaboration::editor field="body" images />   {{-- with image uploads --}}
 ```
 
-The property holding a rich text field can receive either HTML or TipTap's JSON, so type it `array|string|null`. The [demo](demo/resources/js/livewire.js) has the complete editor.
+The property holding a rich text field receives TipTap's JSON as people type, so type it `array|string|null`. To use your own TipTap setup instead, add the `Collaborative` extension to it; `Collaboration.whenReady(element, (room) => …)` hands you the component's room.
 
 **Any other page:** the framework-free client works with plain DOM elements:
 

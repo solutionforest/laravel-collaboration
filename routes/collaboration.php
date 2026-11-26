@@ -22,6 +22,7 @@ Route::post($path.'/sync', SyncController::class)
     ->name('collaboration.sync');
 
 Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.livewire');
+Route::get($path.'/livewire-editor.js', [ScriptController::class, 'editor'])->name('collaboration.livewire.editor');
 
 // What a page asks about its room besides syncing. Each request carries the room's token.
 Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->name('collaboration.')->group(function (): void {

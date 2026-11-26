@@ -45,7 +45,7 @@
 
         <div>
             <span class="field-label">Body</span>
-            <div wire:ignore x-data="richEditor('body')" class="editor"><div x-ref="editor"></div></div>
+            <x-collaboration::editor field="body" class="editor" />
         </div>
     </div>
 

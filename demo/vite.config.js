@@ -7,7 +7,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/livewire.js', 'resources/js/react.jsx', 'resources/js/vue.js'],
+            input: ['resources/css/app.css', 'resources/js/react.jsx', 'resources/js/vue.js'],
             refresh: true,
         }),
         react(),
