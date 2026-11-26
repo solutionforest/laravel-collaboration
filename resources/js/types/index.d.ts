@@ -18,6 +18,8 @@ export interface RoomConfig {
     /** The input a save sends its unsynced edits in. */
     input: string
     interval: number
+    /** False when the app styles everything itself. */
+    styles?: boolean
     channel: string | null
     avatarLimit: number
     reportErrors: boolean
@@ -262,3 +264,6 @@ export interface Version {
 
 /** Draws the record's history into an element; returns what removes it. */
 export function renderHistory(element: HTMLElement, room: Room): () => void
+
+/** Leaves all the styling to the app; the elements keep their `collab-` class names. */
+export function withoutStyles(): void

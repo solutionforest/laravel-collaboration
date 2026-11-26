@@ -296,17 +296,22 @@ const collaborationOf = (props) => {
     return { room: unref(source.room) ?? null, people: unref(source.people) ?? [], status: unref(source.status) ?? 'connecting', following: unref(source.following) ?? null }
 }
 
-/** The faces of everybody else in the room: `<Avatars :form="form" />`. */
+/**
+ * The faces of everybody else in the room: `<Avatars :form="form" />`. Its
+ * default slot draws them yourself: `<template #default="{ shown, more, follow }">`.
+ */
 export const Avatars = defineComponent({
     name: 'CollaborationAvatars',
     props: { ...presenceProps, limit: { type: Number, default: null } },
-    setup(props) {
+    setup(props, { slots }) {
         addStyles()
 
         return () => {
             const { room, people, following } = collaborationOf(props)
             const config = room?.config
             const { shown, more } = avatarsOf(people, props.limit ?? config?.avatarLimit)
+
+            if (slots.default) return slots.default({ shown, more, following, follow: (/** @type {number} */ client) => room?.follow(client) })
 
             return h('div', { class: 'collab-avatars', title: people.length ? undefined : config?.strings?.alone }, [
                 ...shown.map((person) => h(
@@ -330,14 +335,14 @@ export const Avatars = defineComponent({
     },
 })
 
-/** Who is in a field right now: `<FieldPeople :form="form" field="title" />`. */
+/** Who is in a field right now: `<FieldPeople :form="form" field="title" />`; its default slot gets `{ people }`. */
 export const FieldPeople = defineComponent({
     name: 'CollaborationFieldPeople',
     props: { ...presenceProps, field: { type: String, required: true } },
-    setup(props) {
+    setup(props, { slots }) {
         addStyles()
 
-        return () => h('span', { class: 'collab-field-people' }, peopleIn(collaborationOf(props).people, props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
+        return () => slots.default ? slots.default({ people: peopleIn(collaborationOf(props).people, props.field) }) : h('span', { class: 'collab-field-people' }, peopleIn(collaborationOf(props).people, props.field).map((person) => h('span', { key: person.client, class: 'collab-field-person', style: { background: person.color } }, person.name)))
     },
 })
 

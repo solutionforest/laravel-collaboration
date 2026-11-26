@@ -299,6 +299,7 @@ final class Room implements Arrayable, JsonSerializable
             'interval' => Collaboration::$pollingInterval,
             'channel' => Collaboration::broadcasts() ? Audience::of($context)->channel() : null,
             'avatarLimit' => Collaboration::$avatarLimit,
+            'styles' => Collaboration::$styles,
             'reportErrors' => $this->isEditing() && Collaboration::reportsEditorErrors(),
             'user' => Identity::for($user)->key,
             'strings' => trans('collaboration::collaboration.client'),

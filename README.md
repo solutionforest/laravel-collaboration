@@ -497,6 +497,26 @@ Deployment settings live in `config/collaboration.php`. Publish it with `php art
 | `token_lifetime` | `COLLABORATION_TOKEN_LIFETIME` | `900` | Seconds a page's token is valid. Pages renew it themselves. |
 | `rate_limit` | `COLLABORATION_RATE_LIMIT` | `2400` | Sync requests per user per minute, across their tabs |
 
+### Your own design
+
+The package adds one small stylesheet. To style everything yourself, turn it off with `Collaboration::withoutStyles()`, or `withoutStyles()` from `@solutionforest/laravel-collaboration` in JavaScript. Every element keeps a `collab-` class name to style: `collab-avatars`, `collab-avatar`, `collab-caret`, `collab-field-person`, `collab-comments`, `collab-history`, `collab-conflicts` and so on.
+
+To draw the faces or the field labels with your own components:
+
+```jsx
+<Avatars form={form}>
+    {({ shown, more, follow }) => shown.map((person) => <MyAvatar key={person.client} person={person} onClick={() => follow(person.client)} />)}
+</Avatars>
+```
+
+```vue
+<Avatars :form="form" v-slot="{ shown, follow }">
+    <MyAvatar v-for="person in shown" :key="person.client" :person="person" @click="follow(person.client)" />
+</Avatars>
+```
+
+`useCollaboration()`, `useComments()` and `useVersions()` give the data without any markup.
+
 ### Pushing changes with Reverb
 
 Polling works everywhere. With [Reverb](https://reverb.laravel.com) or Pusher set up in Laravel Echo, call `Collaboration::broadcast()`: edits then arrive as soon as they are stored, not at the next poll. The package registers its private channel, and only people in the room may listen.

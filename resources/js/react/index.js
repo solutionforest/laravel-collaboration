@@ -435,15 +435,21 @@ class Repeater {
  *
  *     <Avatars form={form} />
  *
- * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, limit?: number, className?: string}} props
+ * Pass a function as its child to draw them yourself:
+ *
+ *     <Avatars form={form}>{({ shown, more, follow }) => …}</Avatars>
+ *
+ * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, limit?: number, className?: string, children?: (avatars: {shown: Person[], more: number, following: number | null, follow: (client: number) => void}) => any}} props
  */
-export function Avatars({ form, collaboration = form?.collaboration, limit, className = '' }) {
+export function Avatars({ form, collaboration = form?.collaboration, limit, className = '', children }) {
     useInsertionEffect(addStyles, [])
 
     if (!collaboration) return null
 
     const config = collaboration.room?.config
     const { shown, more } = avatarsOf(collaboration.people, limit ?? config?.avatarLimit)
+
+    if (typeof children === 'function') return children({ shown, more, following: collaboration.following, follow: collaboration.follow })
 
     return createElement(
         'div',
@@ -472,10 +478,14 @@ export function Avatars({ form, collaboration = form?.collaboration, limit, clas
  *
  *     <FieldPeople form={form} field="title" />
  *
- * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, field: string, className?: string}} props
+ * A function as its child draws them yourself: `{(people) => …}`.
+ *
+ * @param {{form?: {collaboration: Collaboration}, collaboration?: Collaboration, field: string, className?: string, children?: (people: Person[]) => any}} props
  */
-export function FieldPeople({ form, collaboration = form?.collaboration, field, className = '' }) {
+export function FieldPeople({ form, collaboration = form?.collaboration, field, className = '', children }) {
     useInsertionEffect(addStyles, [])
+
+    if (typeof children === 'function') return children(collaboration?.peopleIn(field) ?? [])
 
     return createElement(
         'span',

@@ -1,5 +1,5 @@
 import type { InertiaFormProps } from '@inertiajs/react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { Version, CommentsState, Conflict, Person, RecordComment, RecordPerson, RecordPresenceConfig, Repeater, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
@@ -60,11 +60,15 @@ interface PresenceProps {
     className?: string
 }
 
-export function Avatars(props: PresenceProps & { limit?: number }): ReactElement | null
+export function Avatars(props: PresenceProps & {
+    limit?: number
+    /** Draw the faces yourself. */
+    children?: (avatars: { shown: Person[], more: number, following: number | null, follow(client: number): void }) => ReactNode
+}): ReactElement | null
 
 /** With a form, `field` must be one of its fields. */
-export function FieldPeople<TForm extends Record<string, any>>(props: { form: CollaborativeForm<TForm>, field: keyof TForm & string, className?: string }): ReactElement
-export function FieldPeople(props: { collaboration: Collaboration, field: string, className?: string }): ReactElement
+export function FieldPeople<TForm extends Record<string, any>>(props: { form: CollaborativeForm<TForm>, field: keyof TForm & string, className?: string, children?: (people: Person[]) => ReactNode }): ReactElement
+export function FieldPeople(props: { collaboration: Collaboration, field: string, className?: string, children?: (people: Person[]) => ReactNode }): ReactElement
 
 export function Status(props: PresenceProps): ReactElement
 

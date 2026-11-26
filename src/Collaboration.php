@@ -35,6 +35,9 @@ final class Collaboration
     /** @var bool|(Closure(): bool) whether browsers report the editor errors they recovered from */
     public static bool|Closure $reportsEditorErrors = false;
 
+    /** Whether the browser adds the package's small stylesheet. */
+    public static bool $styles = true;
+
     /** Whether the package registers its sync route. */
     public static bool $registersRoutes = true;
 
@@ -128,6 +131,15 @@ final class Collaboration
     public static function reportEditorErrors(bool|Closure $reports = true): void
     {
         self::$reportsEditorErrors = $reports;
+    }
+
+    /**
+     * Style everything yourself: the browser adds no stylesheet, and the
+     * elements keep their `collab-` class names.
+     */
+    public static function withoutStyles(): void
+    {
+        self::$styles = false;
     }
 
     /** Register the sync route yourself, for example with other middleware. */
@@ -262,6 +274,7 @@ final class Collaboration
         self::$audits = false;
         self::$reportsEditorErrors = false;
         self::$registersRoutes = true;
+        self::$styles = true;
         self::$runsMigrations = true;
         self::$userResolver = null;
         self::$configResolver = null;

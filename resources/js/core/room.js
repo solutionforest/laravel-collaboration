@@ -4,6 +4,7 @@ import { Presence } from './presence.js'
 import { Realtime } from './realtime.js'
 import { Recovery } from './recovery.js'
 import { HttpTransport } from './transport.js'
+import { withoutStyles } from '../ui/styles.js'
 
 /** Without a key press or a click for this long, a person shows as away. */
 const IDLE_AFTER = 120_000
@@ -67,6 +68,9 @@ export class Room {
     constructor(config, { transport = new HttpTransport() } = {}) {
         this.config = config
         this.transport = transport
+
+        if (config.styles === false) withoutStyles()
+
         this.outbox = new Outbox()
         this.presence = new Presence()
         this.recovery = new Recovery(typeof sessionStorage === 'undefined' ? null : `${config.draft}:${config.user}`)

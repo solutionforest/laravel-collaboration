@@ -36,9 +36,19 @@ button.collab-avatar, .collab-avatar[role=button] { padding: 0; cursor: pointer;
 `
 
 let added = false
+let enabled = true
+
+/**
+ * Leaves all the styling to the app: the elements keep their `collab-`
+ * class names to style. `Collaboration::withoutStyles()` does the same from PHP.
+ */
+export function withoutStyles() {
+    enabled = false
+    document?.querySelector('style[data-collaboration]')?.remove()
+}
 
 export function addStyles() {
-    if (added || typeof document === 'undefined') return
+    if (added || !enabled || typeof document === 'undefined') return
 
     added = true
 
