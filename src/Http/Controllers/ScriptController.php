@@ -13,6 +13,8 @@ final class ScriptController
 
     public const EDITOR = __DIR__.'/../../../resources/dist/livewire-editor.js';
 
+    public const FEATURES = __DIR__.'/../../../resources/dist/livewire-features.js';
+
     public function __invoke(): BinaryFileResponse
     {
         return self::serve(self::PATH);
@@ -22,6 +24,12 @@ final class ScriptController
     public function editor(): BinaryFileResponse
     {
         return self::serve(self::EDITOR);
+    }
+
+    /** Comments and history: only pages that show them load it. */
+    public function features(): BinaryFileResponse
+    {
+        return self::serve(self::FEATURES);
     }
 
     private static function serve(string $path): BinaryFileResponse

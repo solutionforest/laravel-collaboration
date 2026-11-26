@@ -67,21 +67,6 @@ return new class extends Migration
             $table->index(['scope', 'seen_at']);
         });
 
-        $schema->create(Database::tableName('comments'), function (Blueprint $table): void {
-            $table->id();
-            $table->char('room', 64);
-            $table->string('field')->nullable();
-            $table->text('body');
-            $table->string('user_type');
-            $table->string('user_id', 64);
-            $table->string('user_name');
-            $table->text('mentions');
-            $table->string('resolved_by')->nullable();
-            $table->unsignedBigInteger('resolved_at')->nullable();
-            $table->unsignedBigInteger('created_at');
-            $table->index(['room', 'created_at']);
-        });
-
         $schema->create(Database::tableName('versions'), function (Blueprint $table): void {
             $table->id();
             $table->char('room', 64);
@@ -122,7 +107,7 @@ return new class extends Migration
     {
         $schema = Schema::connection($this->getConnection());
 
-        foreach (['edits', 'uploads', 'versions', 'comments', 'participants', 'updates', 'documents'] as $table) {
+        foreach (['edits', 'uploads', 'versions', 'participants', 'updates', 'documents'] as $table) {
             $schema->dropIfExists(Database::tableName($table));
         }
     }

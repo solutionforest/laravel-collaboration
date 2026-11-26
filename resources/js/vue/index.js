@@ -1,16 +1,13 @@
 import { router, useForm } from '@inertiajs/vue3'
-import { computed, defineComponent, h, onBeforeUnmount, onMounted, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { bindItems } from '../bindings/items.js'
-import { commentsOf } from '../core/comments.js'
 import { FormMemory } from '../core/form-memory.js'
 import { listOps, toList } from '../core/items.js'
 import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
-import { renderComments } from '../ui/comments.js'
-import { renderHistory } from '../ui/history.js'
 import { avatarsOf, peopleIn } from '../ui/people.js'
 import { addStyles } from '../ui/styles.js'
 
@@ -444,100 +441,3 @@ export const RecordPeople = defineComponent({
         }
     },
 })
-
-/**
- * A record's comments, for an app's own UI. `<Comments>` is the ready-made one.
- *
- *     const { comments, post, resolve } = useComments(form)
- *
- * @param {{collaboration: {room: any}}} form
- */
-export function useComments(form) {
-    const room = unref(form.collaboration.room)
-    const comments = room ? commentsOf(room) : null
-    const list = ref(comments?.list ?? [])
-    const mentionable = ref(comments?.mentionable ?? [])
-    const canWrite = ref(comments?.canWrite ?? false)
-
-    const stop = comments?.on('change', () => {
-        list.value = [...comments.list]
-        mentionable.value = [...comments.mentionable]
-        canWrite.value = comments.canWrite
-    })
-
-    onScopeDispose(() => stop?.())
-
-    return {
-        comments: list,
-        mentionable,
-        canWrite,
-        post: (/** @type {string} */ body, /** @type {string | null} */ field = null) => comments?.post(body, field),
-        resolve: (/** @type {number} */ id) => comments?.resolve(id),
-        reopen: (/** @type {number} */ id) => comments?.reopen(id),
-    }
-}
-
-/** A record's comments, with a box to write one: `<Comments :form="form" />`, or `field="title"`. */
-export const Comments = defineComponent({
-    name: 'CollaborationComments',
-    props: { form: { type: Object, required: true }, field: { type: String, default: undefined } },
-    setup(props) {
-        const element = ref(/** @type {HTMLElement | null} */ (null))
-        /** @type {(() => void) | undefined} */
-        let remove
-
-        onMounted(() => {
-            const room = unref(props.form.collaboration.room)
-
-            if (room && element.value) remove = renderComments(element.value, room, { field: props.field })
-        })
-
-        onBeforeUnmount(() => remove?.())
-
-        return () => h('div', { ref: element })
-    },
-})
-
-/** The record's history, with Restore for editors: `<History :form="form" />`. */
-export const History = defineComponent({
-    name: 'CollaborationHistory',
-    props: { form: { type: Object, required: true } },
-    setup(props) {
-        const element = ref(/** @type {HTMLElement | null} */ (null))
-        /** @type {(() => void) | undefined} */
-        let remove
-
-        onMounted(() => {
-            const room = unref(props.form.collaboration.room)
-
-            if (room && element.value) remove = renderHistory(element.value, room)
-        })
-
-        onBeforeUnmount(() => remove?.())
-
-        return () => h('div', { ref: element })
-    },
-})
-
-/**
- * The record's history, for an app's own UI: `const { versions, restore } = useVersions(form)`.
- *
- * @param {{collaboration: {room: any}}} form
- */
-export function useVersions(form) {
-    const room = unref(form.collaboration.room)
-    const versions = ref(/** @type {any[]} */ ([]))
-    const canRestore = ref(false)
-    const take = (/** @type {{versions: any[], canRestore: boolean}} */ answer) => {
-        versions.value = answer.versions
-        canRestore.value = answer.canRestore
-    }
-
-    room?.call('versions').then(take).catch(() => {})
-
-    const stop = room?.on('saved', () => room.call('versions').then(take).catch(() => {}))
-
-    onScopeDispose(() => stop?.())
-
-    return { versions, canRestore, restore: (/** @type {number} */ id) => room?.call('versions.restore', { id }).then(take) }
-}

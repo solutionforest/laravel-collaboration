@@ -80,15 +80,3 @@ export function useRecordPresence(config: RecordPresenceConfig | null): { people
 
 /** The faces of everybody on one record of a list. */
 export function RecordPeople(props: { presence: { peopleOn(key: string | number): RecordPerson[] }, record: string | number, limit?: number, className?: string }): ReactElement
-
-/** A record's comments, for an app's own UI. */
-export function useComments(source: { collaboration: { room: Room | null } } | { room: Room | null }): CommentsState<RecordComment[]>
-
-/** A record's comments, with a box to write one; `field` shows one field's. */
-export function Comments(props: { form: { collaboration: { room: Room | null } }, field?: string | null, className?: string }): ReactElement
-
-/** The record's history, with Restore for editors. */
-export function History(props: { form: { collaboration: { room: Room | null } }, className?: string }): ReactElement
-
-/** The record's history, for an app's own UI. */
-export function useVersions(form: { collaboration: { room: Room | null } }): { versions: Version[], canRestore: boolean, restore(id: number): Promise<unknown> | undefined }

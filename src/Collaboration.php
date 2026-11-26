@@ -35,6 +35,9 @@ final class Collaboration
     /** @var bool|(Closure(): bool) whether browsers report the editor errors they recovered from */
     public static bool|Closure $reportsEditorErrors = false;
 
+    /** @var list<string> the optional parts turned on, from `Features` */
+    public static array $features = [];
+
     /** Whether the browser adds the package's small stylesheet. */
     public static bool $styles = true;
 
@@ -131,6 +134,33 @@ final class Collaboration
     public static function reportEditorErrors(bool|Closure $reports = true): void
     {
         self::$reportsEditorErrors = $reports;
+    }
+
+    /**
+     * Turns on optional parts: comments, history, uploads. Call it in a
+     * service provider's `register()` or `boot()`.
+     *
+     *     Collaboration::features([Features::comments(), Features::history()]);
+     *
+     * @param  list<string>  $features
+     */
+    public static function features(array $features): void
+    {
+        self::$features = array_values(array_unique([...self::$features, ...$features]));
+    }
+
+    public static function hasFeature(string $feature): bool
+    {
+        return in_array($feature, self::$features, true);
+    }
+
+    /**
+     * Whether comments are stored, so a deleted record's must go too: with
+     * the feature on, or in an integration such as Filament that keeps its own tables.
+     */
+    public static function storesComments(): bool
+    {
+        return self::hasFeature(Features::COMMENTS) || ! self::$runsMigrations;
     }
 
     /**
@@ -275,6 +305,7 @@ final class Collaboration
         self::$reportsEditorErrors = false;
         self::$registersRoutes = true;
         self::$styles = true;
+        self::$features = [];
         self::$runsMigrations = true;
         self::$userResolver = null;
         self::$configResolver = null;

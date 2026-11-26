@@ -249,8 +249,6 @@ export interface CommentsState<TList> {
     reopen(id: number): Promise<RecordComment[]> | undefined
 }
 
-/** Draws a record's comments into an element; returns what removes them. */
-export function renderComments(element: HTMLElement, room: Room, options?: { field?: string | null }): () => void
 
 /** One version of the shared draft. */
 export interface Version {
@@ -262,8 +260,6 @@ export interface Version {
     changed: string[]
 }
 
-/** Draws the record's history into an element; returns what removes it. */
-export function renderHistory(element: HTMLElement, room: Room): () => void
 
 /** Leaves all the styling to the app; the elements keep their `collab-` class names. */
 export function withoutStyles(): void

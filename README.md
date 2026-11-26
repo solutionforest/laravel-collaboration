@@ -37,13 +37,13 @@ Both packages share one engine. filament-collaboration is built on this package,
 | Presence: faces, who is in which field, sync status | ✓ | ✓ |
 | Saving everybody's edits, deleted-record notice, permission changes | ✓ | ✓ |
 | Values limited to an enum, one draft per language | ✓ | ✓ |
-| Repeaters and builders (lists of items) | ✓ | engine only, no binding yet |
-| Comments and @mentions | ✓ | storage only, no UI yet |
-| Version history and restoring a draft | ✓ | storage only, no UI yet |
-| Choosing between versions when a save conflicts | ✓ | the latest save wins |
-| Images uploaded into rich text while editing | ✓ | not yet |
-| Who is on which record, in a table | ✓ | not yet |
-| Follow a colleague from field to field | ✓ | not yet |
+| Repeaters and builders (lists of items) | ✓ | ✓ |
+| Comments and @mentions | ✓ | ✓, optional |
+| Version history and restoring a draft | ✓ | ✓, optional |
+| Choosing between versions when a save conflicts | ✓ | ✓ |
+| Images uploaded into rich text while editing | ✓ | ✓, optional |
+| Who is on which record, in a table | ✓ | ✓ |
+| Follow a colleague from field to field | ✓ | ✓ |
 
 ## Requirements
 
@@ -285,7 +285,7 @@ bindTextField(room, 'title', document.querySelector('#title'))
 
 ### Images in rich text
 
-Pasted or dropped images are uploaded at once, so everybody sees them. Add TipTap's Image extension and turn it on:
+With `Features::uploads()` on, pasted or dropped images are uploaded at once, so everybody sees them. Add TipTap's Image extension and turn it on:
 
 ```jsx
 import Image from '@tiptap/extension-image'
@@ -395,12 +395,26 @@ Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post
 
 The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
 
+### Optional features
+
+Comments, version history and image uploads are optional. Turn on the ones you want in a service provider. A feature that is off registers no routes, creates no table, and ships no script:
+
+```php
+use SolutionForest\Collaboration\Features;
+
+Collaboration::features([Features::comments(), Features::history(), Features::uploads()]);
+```
+
+Their components have their own imports too, so an app without them doesn't bundle them.
+
 ### Comments and @mentions
 
-People can comment on a record, or on one field of it, and resolve comments when they're done:
+With `Features::comments()` on, people can comment on a record, or on one field of it, and resolve comments when they're done:
 
 ```jsx
-<Comments form={form} />                 // React; Vue: <Comments :form="form" />
+import { Comments } from '@solutionforest/laravel-collaboration/react/comments'   // Vue: …/vue/comments
+
+<Comments form={form} />                 // Vue: <Comments :form="form" />
 <Comments form={form} field="title" />   // only the title's comments
 ```
 
@@ -418,10 +432,12 @@ Event::listen(CommentPosted::class, fn (CommentPosted $event) => /* notify each 
 
 ### Version history
 
-The shared draft keeps versions while people edit, every few minutes, and at each save. Show them, and let editors bring one back for everybody:
+The shared draft keeps versions while people edit, every few minutes, and at each save. With `Features::history()` on, show them, and let editors bring one back for everybody:
 
 ```jsx
-<History form={form} />                  // React; Vue: <History :form="form" />
+import { History } from '@solutionforest/laravel-collaboration/react/history'     // Vue: …/vue/history
+
+<History form={form} />                  // Vue: <History :form="form" />
 ```
 
 ```blade

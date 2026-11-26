@@ -42,7 +42,7 @@ const pages = [
     ['guide/permissions', 'Who may join', ['Who may join', 'Typos are caught']],
     ['guide/rooms', 'Describing a room', ['Describing a room in code', 'Repeaters', 'Create pages']],
     ['guide/presence', 'Presence', ['Following a colleague', 'Who is on each record of a list']],
-    ['guide/comments-and-history', 'Comments and history', ['Comments and @mentions', 'Version history']],
+    ['guide/comments-and-history', 'Comments and history', ['Optional features', 'Comments and @mentions', 'Version history']],
     ['guide/configuration', 'Configuration', ['Configuration', 'Your own design', 'Pushing changes with Reverb']],
     ['guide/integrations', 'Building an integration', ['Building an integration']],
     ['guide/how-it-works', 'How it works', ['How it works']],
