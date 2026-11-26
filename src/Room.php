@@ -106,7 +106,7 @@ final class Room implements Arrayable, JsonSerializable
      */
     public function items(string $field, array $text = []): self
     {
-        $this->texts[$field] = array_values($text);
+        $this->texts[$field] = $text;
 
         return $this->add(FieldKind::Items, [$field]);
     }
@@ -370,6 +370,7 @@ final class Room implements Arrayable, JsonSerializable
      *
      * @param  array<string, mixed>  $values  what the form submitted
      * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
+     * @param  array<string, mixed>|null  $base  what the form's other fields held when it loaded; read from the request when null
      */
     public function update(array $values, ?string $sync = null, ?array $base = null): bool
     {
@@ -452,7 +453,7 @@ final class Room implements Arrayable, JsonSerializable
         $values = $this->currentValues();
 
         return array_map(
-            static fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field], $this->texts[$field] ?? []),
+            fn (string $field, FieldKind $kind): SharedField => new SharedField($field, $kind, $values[$field], $this->texts[$field] ?? []),
             array_keys($this->fields),
             $this->fields,
         );

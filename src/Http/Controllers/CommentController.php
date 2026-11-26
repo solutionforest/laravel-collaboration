@@ -87,10 +87,10 @@ final readonly class CommentController
                 'resolved' => $comment->isResolved(),
                 'resolvedBy' => $comment->resolvedBy,
             ], $this->comments->list($room->context->room)),
-            'mentionable' => $room->record === null ? [] : array_values(array_unique(array_filter(array_map(
-                static fn (mixed $person): ?string => $person instanceof Authenticatable ? Identity::for($person)->name : null,
+            'mentionable' => $room->record === null ? [] : array_values(array_unique(array_map(
+                static fn (Authenticatable $person): string => Identity::for($person)->name,
                 [...Collaboration::mentionable($room->record)],
-            )))),
+            ))),
             'canWrite' => $room->isEditing(),
             'me' => $me->name,
         ]);
