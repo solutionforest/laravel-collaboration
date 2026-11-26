@@ -348,6 +348,16 @@ Collaboration::room($post)
 
 A field cast to an enum only takes its cases, without `allowed`. A locked field is read-only for everybody else while somebody is in it, and says who: for fields where merging two people's changes makes no sense.
 
+### Create pages
+
+Before a record exists there is nothing to merge yet, but people can still see who else is creating one:
+
+```php
+Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post::class)]);
+```
+
+The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
+
 ### Typos are caught
 
 Everything that can be checked is, as early as possible:

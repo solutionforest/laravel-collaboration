@@ -56,7 +56,7 @@ final class Collaboration
     /** @var (Closure(Authenticatable): ?string)|null */
     public static ?Closure $userAvatarResolver = null;
 
-    /** @var (Closure(Authenticatable, Model, string): bool)|null */
+    /** @var (Closure(Authenticatable, Model|class-string<Model>, string): bool)|null */
     public static ?Closure $authorizer = null;
 
     /** @var (Closure(Model|null): mixed)|null */
@@ -66,6 +66,17 @@ final class Collaboration
     public static function room(Model $record): Room
     {
         return new Room($record);
+    }
+
+    /**
+     * The room of everybody creating a record of this model: they see each
+     * other, until each saves their own.
+     *
+     * @param  class-string<Model>  $model
+     */
+    public static function creating(string $model): Room
+    {
+        return new Room(new $model);
     }
 
     /**
@@ -166,7 +177,7 @@ final class Collaboration
      * Decide who may join a record's room. By default, editing needs the
      * policy's `update` ability and viewing its `view` ability.
      *
-     * @param  Closure(Authenticatable $user, Model $record, string $ability): bool  $callback
+     * @param  Closure(Authenticatable $user, Model|class-string<Model> $record, string $ability): bool  $callback  a record, or a model class for `create`
      */
     public static function authorizeUsing(Closure $callback): void
     {

@@ -213,9 +213,18 @@ final class Room implements Arrayable, JsonSerializable
         return $this->fields;
     }
 
+    /** A record's room; before it is saved, the room of everybody creating one. */
     public function id(): string
     {
-        return app(RoomResolver::class)->forRecord($this->record);
+        return $this->isCreating()
+            ? app(RoomResolver::class)->forScope($this->record->getMorphClass())
+            : app(RoomResolver::class)->forRecord($this->record);
+    }
+
+    /** Whether this is a new record, not saved yet: its room only shows who else is creating one. */
+    public function isCreating(): bool
+    {
+        return ! $this->record->exists;
     }
 
     public function draft(): string
@@ -227,17 +236,18 @@ final class Room implements Arrayable, JsonSerializable
     public function toArray(): array
     {
         // A typo in a field name fails here, in development, not silently in the browser.
-        if ($this->record->exists && config('app.debug')) {
+        if (! $this->isCreating() && config('app.debug')) {
             ModelFields::assertExist($this->record, [...array_keys($this->fields), ...$this->locks]);
         }
 
         $user = $this->user();
 
-        if ($user === null || ! RoomAuthorizer::allows($user, $this->record, $this->isEditing() ? 'update' : 'view')) {
+        if ($user === null || ! RoomAuthorizer::allows($user, $this->isCreating() ? $this->record::class : $this->record, $this->ability())) {
             return [];
         }
 
-        $live = $this->isEditing() && Permissions::mayCollaborate($this->record, $user) ? $this->fields : [];
+        // A new record has no draft yet: people creating one see each other, and nothing more.
+        $live = $this->isEditing() && ! $this->isCreating() && Permissions::mayCollaborate($this->record, $user) ? $this->fields : [];
 
         if ($live !== []) {
             $this->reconcile();
@@ -251,7 +261,7 @@ final class Room implements Arrayable, JsonSerializable
             'csrf' => csrf_token(),
             'token' => $context->toToken(),
             'client' => $context->client,
-            'mode' => $this->mode->value,
+            'mode' => $this->mode()->value,
             'fields' => (object) array_map(static fn (FieldKind $kind): string => $kind->value, $live),
             'labels' => (object) $this->resolvedLabels(),
             'locks' => array_values(array_intersect($this->locks, array_keys($this->fields))),
@@ -302,6 +312,11 @@ final class Room implements Arrayable, JsonSerializable
             $mine = $this->toShared($values);
             $published = $live->valuesToPublish($mine, $this->currentValues());
             $result = $persist([...$values, ...$this->fromShared($published)]);
+
+            // A new record saved through its create room has no draft to bring up to date.
+            if ($this->isCreating()) {
+                return $result;
+            }
 
             $this->record->refresh();
             $this->markSaved($context, $live, $mine);
@@ -413,15 +428,15 @@ final class Room implements Arrayable, JsonSerializable
 
         return new RoomContext(
             room: $this->id(),
-            scope: null,
-            mode: $this->mode,
+            scope: $this->isCreating() ? $this->id() : null,
+            mode: $this->mode(),
             client: $this->client,
             guard: $this->guardName(),
             user: Data::string($user->getAuthIdentifier()),
             fields: $live,
             visible: array_keys($this->fields),
             model: $this->record::class,
-            key: Data::string($this->record->getKey()),
+            key: $this->isCreating() ? null : Data::string($this->record->getKey()),
             expiresAt: now()->getTimestamp() + max(1, Data::int(Collaboration::config('token_lifetime'), 900)),
             allowed: array_intersect_key($this->allowedValuesOfFields(), $live),
             permissions: Permissions::version($this->id()),
@@ -562,6 +577,21 @@ final class Room implements Arrayable, JsonSerializable
     private function isEditing(): bool
     {
         return $this->mode === PresenceMode::Editing;
+    }
+
+    private function mode(): PresenceMode
+    {
+        return $this->isCreating() && $this->isEditing() ? PresenceMode::Creating : $this->mode;
+    }
+
+    /** What the policy is asked: `create`, `update`, or `view` for a room people only watch. */
+    private function ability(): string
+    {
+        return match (true) {
+            $this->isCreating() => 'create',
+            $this->isEditing() => 'update',
+            default => 'view',
+        };
     }
 
     private function user(): ?Authenticatable
