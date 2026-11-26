@@ -1,0 +1,77 @@
+name: Docs
+
+# The documentation site: built from website/, docs/, README.md and CHANGELOG.md,
+# its links checked, and published to GitHub Pages from main.
+on:
+  push:
+    branches: [main]
+    paths: ['website/**', 'docs/**', 'README.md', 'CHANGELOG.md', '.github/workflows/docs.yml']
+  pull_request:
+    paths: ['website/**', 'docs/**', 'README.md', 'CHANGELOG.md', '.github/workflows/docs.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and check links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Links and anchors between pages
+        run: npm run check
+
+      - name: Links to other sites
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Pages between themselves are checked above, and the site is only live after this run.
+          # Links into this repository are checked too: lychee uses the workflow's token.
+          # Except the changelog's comparisons, which name a tag that is only pushed after the release is merged.
+          args: >-
+            --no-progress --root-dir website/.vitepress/dist
+            --exclude 'solutionforest\.github\.io'
+            --exclude '^file://'
+            --exclude 'github\.com/solutionforest/laravel-collaboration/compare/'
+            'website/.vitepress/dist/**/*.html'
+          fail: true
+
+      # The built site, for a preview from the pull request's run, and for Pages.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/.vitepress/dist
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    # Pages needs a paid plan on a private repository: publish once it is public.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

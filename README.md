@@ -1,5 +1,7 @@
 # Laravel Collaboration
 
+[![Laravel Collaboration: Google Docs-style editing for Laravel](website/public/covers/default.png)](https://solutionforest.github.io/laravel-collaboration/)
+
 [![Latest version](https://img.shields.io/packagist/v/solutionforest/laravel-collaboration.svg)](https://packagist.org/packages/solutionforest/laravel-collaboration) [![Tests](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml) [![License](https://img.shields.io/packagist/l/solutionforest/laravel-collaboration.svg)](LICENSE)
 
 Google Docs-style editing for any Laravel app. People editing the same record see each other, see each other's carets, and type into the same fields at the same time. Saving keeps everybody's work.
@@ -8,9 +10,9 @@ It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with 
 
 ![Three people editing one article from Livewire, React and Vue](docs/media/demo.gif)
 
-<sub>Alice in React, Bob in Vue and Chloe in Livewire, editing one article. Recorded from the [demo](#run-the-demo). [Watch as MP4](docs/media/demo.mp4).</sub>
+<sub>Alice in React, Bob in Vue and Chloe in Livewire, editing one article. Recorded from the [demo](#run-the-demo). [Watch as MP4](docs/media/demo.mp4), or [on the documentation site](https://solutionforest.github.io/laravel-collaboration/#demo).</sub>
 
-**Documentation site:** `cd website && npm install && npm run dev` builds it from this README.
+**Documentation:** [solutionforest.github.io/laravel-collaboration](https://solutionforest.github.io/laravel-collaboration/), built from this README.
 
 **Contents:** [What you get](#what-you-get) · [Compared with filament-collaboration](#compared-with-filament-collaboration) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [Run the demo](#run-the-demo) · [Testing](#testing)
 

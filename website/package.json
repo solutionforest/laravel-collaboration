@@ -1,13 +1,18 @@
 {
+    "name": "laravel-collaboration-website",
     "private": true,
     "type": "module",
     "scripts": {
         "sync": "node scripts/sync.mjs",
         "dev": "npm run sync && vitepress dev",
         "build": "npm run sync && vitepress build",
-        "preview": "vitepress preview"
+        "preview": "vitepress preview",
+        "brand": "node scripts/brand.mjs",
+        "check": "node scripts/check-links.mjs",
+        "diagrams": "node scripts/diagrams.mjs"
     },
     "devDependencies": {
-        "vitepress": "^1.6.0"
+        "mermaid": "^11.17.2",
+        "vitepress": "^1.6.4"
     }
 }

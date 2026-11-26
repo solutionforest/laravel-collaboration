@@ -1,6 +1,5 @@
-node_modules
-guide
-public/media
-.vitepress/cache
-.vitepress/dist
+node_modules/
+src/
+.vitepress/cache/
+.vitepress/dist/
 .vitepress/pages.json
