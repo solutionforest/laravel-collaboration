@@ -15,6 +15,7 @@
 /tests export-ignore
 /resources/css export-ignore
 /scripts export-ignore
+/skills export-ignore
 /package-lock.json export-ignore
 /vite.config.js export-ignore
 /vite.editor.config.js export-ignore

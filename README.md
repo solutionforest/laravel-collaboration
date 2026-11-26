@@ -14,9 +14,9 @@ It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with 
 
 <sub>Alice in React, Bob in Vue and Chloe in Livewire, editing one article. Recorded from the [demo](#run-the-demo). [Watch as MP4](docs/media/demo.mp4), or [on the documentation site](https://solutionforest.github.io/laravel-collaboration/#demo).</sub>
 
-**Documentation:** [solutionforest.github.io/laravel-collaboration](https://solutionforest.github.io/laravel-collaboration/), built from this README.
+**Documentation:** [solutionforest.github.io/laravel-collaboration](https://solutionforest.github.io/laravel-collaboration/) · **[Your first collaborative page (step by step)](docs/first-page.md)** · **[Make your own component live](docs/custom-components.md)** · **[AI assistant skills](#with-an-ai-assistant)**
 
-**Contents:** [What you get](#what-you-get) · [Compared with filament-collaboration](#compared-with-filament-collaboration) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [Run the demo](#run-the-demo) · [Testing](#testing)
+**Contents:** [What you get](#what-you-get) · [Compared with filament-collaboration](#compared-with-filament-collaboration) · [Requirements](#requirements) · [Installation](#installation) · [Quick start](#quick-start) · [Rich text](#rich-text) · [Saving](#saving) · [Who may join](#who-may-join) · [Describing a room in code](#describing-a-room-in-code) · [Configuration](#configuration) · [Building an integration](#building-an-integration) · [How it works](#how-it-works) · [Troubleshooting](#troubleshooting) · [With an AI assistant](#with-an-ai-assistant) · [Run the demo](#run-the-demo) · [Testing](#testing)
 
 ## What you get
 
@@ -279,6 +279,8 @@ const form = useCollaborativeForm(() => props.collaboration, {
 | Save | `saveCollaboratively()` | `$room->update()` | `$room->update()` |
 
 ![The same moment in React, Vue and Livewire](docs/media/three-stacks.png)
+
+> Want a full copy-pasteable example page? Follow **[Your first collaborative page](docs/first-page.md)** step by step. Building your own input, picker, or editor component? See **[Make your own component live](docs/custom-components.md)**.
 
 ## Rich text
 
@@ -684,6 +686,36 @@ The engine is shared with [filament-collaboration](https://github.com/solutionfo
 | Changes arrive about a second late | That is polling. Call `Collaboration::broadcast()` with Reverb for pushes. |
 | "Live editing stopped" | The browser sent edits the server refused, such as a value outside `allowed`. Typing still merges when you save. |
 | Rich text loses formatting | Only TipTap's StarterKit nodes and marks, plus tables, images and links, merge live. Content the draft can't hold exactly isn't shared live, and is saved as submitted. |
+
+## With an AI assistant
+
+The package ships skills for AI coding assistants (Claude Code, Cursor, Codex, Antigravity, and [Laravel Boost](https://laravel.com/docs/boost)), so your assistant knows the exact PHP, Livewire, React, Vue, and custom-component APIs without guessing.
+
+### Install from GitHub (Agent Skills)
+
+Add the skill from this repository using the Agent Skills CLI:
+
+```bash
+npx skills add solutionforest/laravel-collaboration
+```
+
+Or copy it directly from `skills/laravel-collaboration/SKILL.md` in [this repository](https://github.com/solutionforest/laravel-collaboration).
+
+### Use with Laravel Boost
+
+The Composer package also includes a Laravel Boost guideline and the `laravel-collaboration-development` skill under `resources/boost/`. Add the package to your app's `boost.json`:
+
+```json
+{
+    "packages": ["solutionforest/laravel-collaboration"]
+}
+```
+
+Then update Boost:
+
+```bash
+php artisan boost:update
+```
 
 ## Run the demo
 

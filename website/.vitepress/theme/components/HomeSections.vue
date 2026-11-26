@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import Family from './Family.vue'
 import { withBase } from 'vitepress'
+import { useStack } from '../stack'
+
+const stack = useStack()
 
 const gallery = [
     { file: 'three-stacks.png', title: 'Three stacks, one article', text: 'Alice in React, Bob in Vue and Chloe in Livewire, at the same moment.' },
@@ -46,16 +49,25 @@ php artisan collaboration:install</code></pre>
                 <div class="home-step">
                     <span class="home-step-number">3</span>
                     <h3>Use it</h3>
-                    <pre v-pre><code>// React and Vue
-const form = useCollaborativeForm(collaboration, data)
+                    <pre v-if="stack === 'livewire'" v-pre><code>&lt;x-collaboration::room :room="$this->collaborationRoom()" /&gt;
+
+&lt;input wire:model="title"&gt;
+&lt;x-collaboration::editor field="body" /&gt;</code></pre>
+                    <pre v-else-if="stack === 'react'" v-pre><code>const form = useCollaborativeForm(collaboration, data)
 
 &lt;input {...form.field('title')} /&gt;
+&lt;CollaborativeEditor form={form} field="body" /&gt;</code></pre>
+                    <pre v-else v-pre><code>const form = useCollaborativeForm(() => props.collaboration, data)
 
-{{-- Livewire --}}
-&lt;x-collaboration::room :room="$this->collaborationRoom()" /&gt;</code></pre>
+&lt;input v-model="form.title" v-collaborate="form.field('title')"&gt;
+&lt;CollaborativeEditor :form="form" field="body" /&gt;</code></pre>
                 </div>
             </div>
-            <p class="home-more"><a :href="withBase('/getting-started')">Read the full install guide →</a></p>
+            <p class="home-more">
+                <a :href="withBase('/guide/first-page')">Follow the step-by-step example page →</a>
+                &nbsp;·&nbsp;
+                <a :href="withBase('/guide/custom-components')">Make your own component live →</a>
+            </p>
         </section>
 
         <section class="home-section">
