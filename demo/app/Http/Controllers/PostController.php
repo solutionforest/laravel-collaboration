@@ -16,6 +16,7 @@ class PostController
         return Inertia::render('Posts/Edit', [
             'post' => $post,
             'statuses' => Post::STATUSES,
+            'channels' => Post::CHANNELS,
             'collaboration' => $post->collaboration(),
         ]);
     }
@@ -28,6 +29,8 @@ class PostController
             'body' => ['nullable'],
             'status' => ['required', 'in:'.implode(',', array_keys(Post::STATUSES))],
             'featured' => ['boolean'],
+            'channels' => ['array'],
+            'channels.*' => ['in:'.implode(',', array_keys(Post::CHANNELS))],
         ]);
 
         $post->collaboration()->update($validated);

@@ -62,10 +62,11 @@ await pause(1200)
 
 for (const { page, stack } of [alice, bob, chloe]) await page.screenshot({ path: `${raw}${stack}.png` })
 
-// Bob sets the status, Chloe features it, Alice saves everybody's work.
+// Bob sets the status, Chloe adds the newsletter, Alice saves everybody's work.
 await bob.page.locator('select').selectOption('review')
+await bob.page.locator('select').blur()
 await pause(700)
-await chloe.page.locator('input[type=checkbox]').check()
+await chloe.page.locator('input[type=checkbox][value=email]').check()
 await pause(900)
 await alice.page.getByRole('button', { name: 'Save' }).click()
 await pause(2500)

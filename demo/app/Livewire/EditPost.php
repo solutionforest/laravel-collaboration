@@ -26,11 +26,14 @@ class EditPost extends Component
 
     public bool $featured = false;
 
+    /** @var list<string> */
+    public array $channels = [];
+
     public bool $saved = false;
 
     public function mount(Post $post): void
     {
-        $this->fill($post->only('title', 'summary', 'body', 'status', 'featured'));
+        $this->fill([...$post->only('title', 'summary', 'body', 'status', 'featured'), 'channels' => $post->channels ?? []]);
     }
 
     public function room(): Room
@@ -49,6 +52,6 @@ class EditPost extends Component
 
     public function render()
     {
-        return view('livewire.edit-post', ['statuses' => Post::STATUSES]);
+        return view('livewire.edit-post', ['statuses' => Post::STATUSES, 'channelOptions' => Post::CHANNELS]);
     }
 }

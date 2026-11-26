@@ -1,13 +1,14 @@
 import { Avatars, FieldPeople, Status, useCollaborativeForm } from '@solutionforest/laravel-collaboration/react'
 import { CollaborativeEditor } from '@solutionforest/laravel-collaboration/react/editor'
 
-export default function Edit({ post, statuses, collaboration }) {
+export default function Edit({ post, statuses, channels, collaboration }) {
     const form = useCollaborativeForm(collaboration, {
         title: post.title,
         summary: post.summary ?? '',
         body: post.body ?? '',
         status: post.status,
         featured: post.featured,
+        channels: post.channels ?? [],
     })
 
     const save = (event) => {
@@ -50,6 +51,17 @@ export default function Edit({ post, statuses, collaboration }) {
                         Featured on the home page
                     </label>
                 </div>
+
+                <fieldset>
+                    <legend className="field-label">Publish to <FieldPeople form={form} field="channels" /></legend>
+                    <div className="mt-1.5 flex gap-5">
+                        {Object.entries(channels).map(([value, label]) => (
+                            <label key={value} className="flex items-center gap-2 text-sm text-slate-700">
+                                <input type="checkbox" className="size-4 rounded border-slate-300" {...form.field('channels', { value })} /> {label}
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
 
                 <div>
                     <span className="field-label">Body <FieldPeople form={form} field="body" /></span>

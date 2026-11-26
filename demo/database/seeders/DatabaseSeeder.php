@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             'summary' => 'What changes for customers, and when.',
             'body' => '<h2>Why we are changing</h2><p>Customers asked for <strong>online booking</strong> that works on any phone.</p><ul><li><p>Book in under a minute</p></li><li><p>Reminders by SMS</p></li></ul>',
             'status' => 'draft',
+            'channels' => ['web'],
         ]);
     }
 }

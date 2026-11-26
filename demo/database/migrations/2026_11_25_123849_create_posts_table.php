@@ -15,6 +15,7 @@ return new class extends Migration
             $table->longText('body')->nullable();
             $table->string('status')->default('draft');
             $table->boolean('featured')->default(false);
+            $table->json('channels')->nullable();
             $table->timestamps();
         });
     }

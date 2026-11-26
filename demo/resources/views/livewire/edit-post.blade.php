@@ -34,6 +34,15 @@
             </label>
         </div>
 
+        <fieldset>
+            <legend class="field-label">Publish to</legend>
+            <div class="mt-1.5 flex gap-5">
+                @foreach ($channelOptions as $value => $label)
+                    <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" wire:model="channels" value="{{ $value }}" class="size-4 rounded border-slate-300"> {{ $label }}</label>
+                @endforeach
+            </div>
+        </fieldset>
+
         <div>
             <span class="field-label">Body</span>
             <div wire:ignore x-data="richEditor('body')" class="editor"><div x-ref="editor"></div></div>
