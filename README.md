@@ -249,7 +249,7 @@ const form = useCollaborativeForm(() => props.collaboration, {
 | Locked fields | built in | built in | built in |
 | Rich text | TipTap + `Collaborative` | `<CollaborativeEditor>` | `<CollaborativeEditor>` |
 | Faces | built in | `<Avatars>` | `<Avatars>` |
-| Who is in a field | carets | `<FieldPeople>` | `<FieldPeople>` |
+| Who is in a field | `<x-collaboration::field-people>` | `<FieldPeople>` | `<FieldPeople>` |
 | Sync status | built in | `<Status>` | `<Status>` |
 | Save | `saveCollaboratively()` | `$room->update()` | `$room->update()` |
 

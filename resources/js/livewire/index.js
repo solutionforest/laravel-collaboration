@@ -7,6 +7,7 @@ import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
 import { renderComments } from '../ui/comments.js'
+import { peopleIn } from '../ui/people.js'
 import { renderHistory } from '../ui/history.js'
 
 /**
@@ -214,6 +215,17 @@ class LivewireRoom {
         presence?.setAttribute('title', this.room.people.map((person) => describe(person, strings, labels)).join('\n') || (strings.alone ?? ''))
 
         if (status && !this.noticeTimer) status.textContent = strings[this.room.status] ?? ''
+
+        // `<x-collaboration::field-people>`: who is in each field.
+        for (const spot of this.component.querySelectorAll(/** @type {'span'} */ ('[data-collab-people]'))) {
+            spot.replaceChildren(...peopleIn(this.room.people, spot.dataset.collabPeople ?? '').map((person) => {
+                const label = Object.assign(document.createElement('span'), { className: 'collab-field-person', textContent: person.name })
+
+                label.style.background = person.color
+
+                return label
+            }))
+        }
 
         this.el.dataset.status = this.room.status
     }
