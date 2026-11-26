@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Laravel Collaboration">
+  <rect width="64" height="64" rx="14" fill="#f59e0b"/>
+  <!-- Two people's carets, each with its name flag: editing the same text together. -->
+  <rect x="13" y="13" width="17" height="9" rx="2.5" fill="#18181b"/>
+  <rect x="13" y="13" width="4.5" height="38" rx="2.25" fill="#18181b"/>
+  <rect x="35" y="21" width="16" height="9" rx="2.5" fill="#ffffff"/>
+  <rect x="46.5" y="21" width="4.5" height="30" rx="2.25" fill="#ffffff"/>
+</svg>

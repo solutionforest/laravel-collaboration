@@ -1,0 +1,27 @@
+{
+    "name": "Laravel Collaboration",
+    "short_name": "Collaboration",
+    "description": "Google Docs-style collaboration for any Laravel app",
+    "start_url": "/laravel-collaboration/",
+    "scope": "/laravel-collaboration/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#f59e0b",
+    "icons": [
+        {
+            "src": "/laravel-collaboration/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/laravel-collaboration/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/laravel-collaboration/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://solutionforest.github.io/laravel-collaboration/sitemap.xml
