@@ -1,5 +1,7 @@
 # Laravel Collaboration
 
+[![Latest version](https://img.shields.io/packagist/v/solutionforest/laravel-collaboration.svg)](https://packagist.org/packages/solutionforest/laravel-collaboration) [![Tests](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml) [![License](https://img.shields.io/packagist/l/solutionforest/laravel-collaboration.svg)](LICENSE)
+
 Google Docs-style editing for any Laravel app. People editing the same record see each other, see each other's carets, and type into the same fields at the same time. Saving keeps everybody's work.
 
 It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with **TipTap** for rich text. It runs over plain HTTP, so you don't need a WebSocket server. Laravel Reverb makes it faster if you have one.
@@ -66,8 +68,6 @@ Install it, and let the installer set it up:
 composer require solutionforest/laravel-collaboration
 php artisan collaboration:install
 ```
-
-<sub>Until the package is listed on Packagist, add the repository to your app's `composer.json` first: `"repositories": [{ "type": "vcs", "url": "https://github.com/solutionforest/laravel-collaboration" }]`.</sub>
 
 The installer publishes the config, creates the tables, installs the browser side for an Inertia app, and prints the next steps for your stack.
 
