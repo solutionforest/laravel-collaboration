@@ -1,6 +1,6 @@
 import type { InertiaForm } from '@inertiajs/vue3'
 import type { DefineComponent, Directive, Ref, ShallowRef } from 'vue'
-import type { Conflict, Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -52,3 +52,8 @@ export const Avatars: DefineComponent<PresenceProps & { limit?: number }>
 export const FieldPeople: DefineComponent<PresenceProps & { field: string }>
 export const Status: DefineComponent<PresenceProps>
 export const Conflicts: DefineComponent<{ form: { collaboration: unknown } }>
+
+/** Who is on each record of a list: `useRecordPresence(() => props.presence)`. */
+export function useRecordPresence(config: () => RecordPresenceConfig | null): { people: Ref<Record<string, RecordPerson[]>>, peopleOn(key: string | number): RecordPerson[] }
+
+export const RecordPeople: DefineComponent<{ presence: { peopleOn(key: string | number): RecordPerson[] }, record: string | number, limit?: number }>

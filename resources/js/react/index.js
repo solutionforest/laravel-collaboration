@@ -3,6 +3,7 @@ import { createElement, useEffect, useInsertionEffect, useMemo, useRef, useState
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { FormMemory } from '../core/form-memory.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
 import { describe, translate } from '../ui/avatars.js'
@@ -344,6 +345,49 @@ export function Status({ form, collaboration = form?.collaboration, className = 
     }, [room])
 
     return createElement('span', { className, 'data-status': status }, notice ?? strings[status] ?? '')
+}
+
+/**
+ * Who is on each record of a list, from `Collaboration::presence($posts)`:
+ *
+ *     const presence = useRecordPresence(props.presence)
+ *
+ *     <RecordPeople presence={presence} record={post.id} />
+ *
+ * @param {any} config
+ * @returns {{people: Record<string, Person[]>, peopleOn: (key: string | number) => Person[]}}
+ */
+export function useRecordPresence(config) {
+    const [people, setPeople] = useState(/** @type {Record<string, Person[]>} */ (config?.people ?? {}))
+
+    useEffect(() => {
+        if (!config) return
+
+        const presence = new RecordPresence(config)
+
+        presence.on('people', (next) => setPeople({ ...next }))
+
+        return () => presence.destroy()
+    }, [config?.token])
+
+    return useMemo(() => ({ people, peopleOn: (key) => people[String(key)] ?? [] }), [people])
+}
+
+/**
+ * The faces of everybody on one record of a list.
+ *
+ * @param {{presence: {peopleOn: (key: string | number) => Person[]}, record: string | number, limit?: number, className?: string}} props
+ */
+export function RecordPeople({ presence, record, limit = 3, className = '' }) {
+    useInsertionEffect(addStyles, [])
+
+    const { shown, more } = avatarsOf(presence.peopleOn(record), limit)
+
+    return createElement('span', { className: `collab-avatars ${className}`.trim() },
+        ...shown.map((person) => createElement('span', { key: person.key, className: 'collab-avatar', title: person.name, 'data-idle': person.idle || undefined, style: { background: person.color } },
+            person.avatar ? createElement('img', { src: person.avatar, alt: '', referrerPolicy: 'no-referrer' }) : person.initials)),
+        more ? createElement('span', { key: 'more', className: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
+    )
 }
 
 /**

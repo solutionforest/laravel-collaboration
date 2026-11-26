@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use SolutionForest\Collaboration\Collaboration;
+use SolutionForest\Collaboration\Http\Controllers\PresenceController;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
 use SolutionForest\Collaboration\Http\Controllers\ValuesController;
@@ -22,4 +23,5 @@ Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.l
 // What a page asks about its room besides syncing. Each request carries the room's token.
 Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->name('collaboration.')->group(function (): void {
     Route::post('values', ValuesController::class)->name('values');
+    Route::post('presence', PresenceController::class)->name('presence');
 });

@@ -362,6 +362,30 @@ Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post
 
 The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
 
+### Who is on each record of a list
+
+Show, in a list or a table, who is on each record right now:
+
+```php
+Inertia::render('Posts/Index', ['posts' => $posts, 'presence' => Collaboration::presence($posts)]);
+```
+
+```jsx
+const presence = useRecordPresence(props.presence)          // React; Vue: useRecordPresence(() => props.presence)
+
+<RecordPeople presence={presence} record={post.id} />
+```
+
+```blade
+<x-collaboration::record-presence :presence="Collaboration::presence($posts)">
+    @foreach ($posts as $post)
+        <tr><td>{{ $post->title }}</td><td><x-collaboration::record-people :record="$post->id" /></td></tr>
+    @endforeach
+</x-collaboration::record-presence>
+```
+
+Only records this person may `view` are included, and the faces refresh every few seconds.
+
 ### Typos are caught
 
 Everything that can be checked is, as early as possible:

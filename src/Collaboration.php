@@ -69,6 +69,16 @@ final class Collaboration
     }
 
     /**
+     * Who is on each record of a list or table, kept up to date while the page is open.
+     *
+     * @param  iterable<Model>  $records
+     */
+    public static function presence(iterable $records): RecordPresence
+    {
+        return new RecordPresence($records);
+    }
+
+    /**
      * The room of everybody creating a record of this model: they see each
      * other, until each saves their own.
      *

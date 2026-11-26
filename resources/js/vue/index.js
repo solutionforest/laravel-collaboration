@@ -3,6 +3,7 @@ import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, sha
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { FormMemory } from '../core/form-memory.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
 import { avatarsOf, peopleIn } from '../ui/people.js'
@@ -314,6 +315,45 @@ export const Conflicts = defineComponent({
                     h('button', { type: 'button', onClick: () => useTheirs(conflict.field) }, translate(strings.use_theirs ?? 'Use theirs', { name })),
                 ])
             }))
+        }
+    },
+})
+
+/**
+ * Who is on each record of a list, from `Collaboration::presence($posts)`:
+ *
+ *     const presence = useRecordPresence(() => props.presence)
+ *
+ *     <RecordPeople :presence="presence" :record="post.id" />
+ *
+ * @param {() => any} config
+ */
+export function useRecordPresence(config) {
+    const initial = config()
+    const people = ref(/** @type {Record<string, Person[]>} */ (initial?.people ?? {}))
+    const presence = initial && typeof window !== 'undefined' ? new RecordPresence(initial) : null
+
+    presence?.on('people', (next) => (people.value = { ...next }))
+    onBeforeUnmount(() => presence?.destroy())
+
+    return { people, peopleOn: (/** @type {string | number} */ key) => people.value[String(key)] ?? [] }
+}
+
+/** The faces of everybody on one record of a list: `<RecordPeople :presence="presence" :record="post.id" />`. */
+export const RecordPeople = defineComponent({
+    name: 'CollaborationRecordPeople',
+    props: { presence: { type: Object, required: true }, record: { type: [String, Number], required: true }, limit: { type: Number, default: 3 } },
+    setup(props) {
+        addStyles()
+
+        return () => {
+            const { shown, more } = avatarsOf(props.presence.peopleOn(props.record), props.limit)
+
+            return h('span', { class: 'collab-avatars' }, [
+                ...shown.map((person) => h('span', { key: person.key, class: 'collab-avatar', title: person.name, 'data-idle': person.idle || undefined, style: { background: person.color } },
+                    person.avatar ? [h('img', { src: person.avatar, alt: '', referrerpolicy: 'no-referrer' })] : person.initials)),
+                more ? h('span', { class: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,
+            ])
         }
     },
 })

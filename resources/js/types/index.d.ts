@@ -168,3 +168,33 @@ export class FormMemory {
     useTheirs(field: string): unknown
     payload(): string
 }
+
+/** What `Collaboration::presence($records)` renders. */
+export interface RecordPresenceConfig {
+    url: string
+    csrf: string
+    token: string
+    interval: number
+    people: Record<string, RecordPerson[]>
+    strings: Record<string, string>
+}
+
+/** Somebody on a record of a list. */
+export interface RecordPerson {
+    key: string
+    name: string
+    initials: string
+    avatar: string | null
+    color: string
+    mode: string
+    idle: boolean
+}
+
+/** Who is on each record of a list, asked again every few seconds. */
+export class RecordPresence {
+    constructor(config: RecordPresenceConfig)
+    readonly people: Record<string, RecordPerson[]>
+    peopleOn(key: string | number): RecordPerson[]
+    on(event: 'people', callback: (people: Record<string, RecordPerson[]>) => void): () => void
+    destroy(): void
+}

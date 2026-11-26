@@ -4,6 +4,7 @@
  */
 export { Room } from './core/room.js'
 export { FormMemory } from './core/form-memory.js'
+export { RecordPresence } from './core/record-presence.js'
 export { HttpTransport, SyncError } from './core/transport.js'
 export { bindTextField } from './bindings/text-field.js'
 export { bindValueField } from './bindings/value-field.js'

@@ -1,6 +1,6 @@
 import type { InertiaFormProps } from '@inertiajs/react'
 import type { ReactElement } from 'react'
-import type { Conflict, Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, RecordPerson, RecordPresenceConfig, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -64,3 +64,9 @@ export function Status(props: PresenceProps): ReactElement
 
 /** Fields somebody else saved while you changed them too, with "Keep mine" and "Use theirs". */
 export function Conflicts(props: { form: { collaboration: FormCollaboration }, className?: string }): ReactElement | null
+
+/** Who is on each record of a list: `useRecordPresence(props.presence)`. */
+export function useRecordPresence(config: RecordPresenceConfig | null): { people: Record<string, RecordPerson[]>, peopleOn(key: string | number): RecordPerson[] }
+
+/** The faces of everybody on one record of a list. */
+export function RecordPeople(props: { presence: { peopleOn(key: string | number): RecordPerson[] }, record: string | number, limit?: number, className?: string }): ReactElement

@@ -1,6 +1,7 @@
 import { bindTextField } from '../bindings/text-field.js'
 import { bindValueField } from '../bindings/value-field.js'
 import { isTextInput } from '../bindings/lock.js'
+import { RecordPresence } from '../core/record-presence.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
 
@@ -234,6 +235,34 @@ window.Collaboration = { rooms, roomFor, whenReady, Room }
 // Calls made before this script loaded, kept by the stub `<x-collaboration::room>` renders.
 queued.forEach(([element, callback]) => whenReady(element, callback))
 
+/** @type {Map<HTMLElement, RecordPresence>} lists showing who is on each record */
+const lists = new Map()
+
+/** Fills each `<x-collaboration::record-people>` of each `<x-collaboration::record-presence>`. */
+function scanLists() {
+    for (const el of document.querySelectorAll(/** @type {'div'} */ ('[data-collab-records]'))) {
+        if (lists.has(el)) continue
+
+        const presence = new RecordPresence(JSON.parse(el.dataset.collabRecords ?? '{}'))
+        const render = () => el.querySelectorAll(/** @type {'span'} */ ('[data-collab-record]')).forEach((spot) => {
+            spot.replaceChildren(renderAvatars(presence.peopleOn(spot.dataset.collabRecord ?? ''), { limit: 3 }))
+        })
+
+        presence.on('people', render)
+        lists.set(el, presence)
+        render()
+    }
+
+    for (const [el, presence] of lists) {
+        if (el.isConnected) continue
+
+        presence.destroy()
+        lists.delete(el)
+    }
+}
+
+document.addEventListener('livewire:initialized', scanLists)
+setInterval(scanLists, 1000)
 document.addEventListener('livewire:initialized', scan)
 document.addEventListener('livewire:navigated', scan)
 setInterval(scan, 300)
