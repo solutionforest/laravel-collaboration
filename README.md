@@ -66,12 +66,14 @@ The repository is private for now, so first tell Composer where it is, in your a
 ]
 ```
 
-Then install it and create its tables:
+Then install it, and let the installer set it up:
 
 ```bash
 composer require solutionforest/laravel-collaboration
-php artisan migrate
+php artisan collaboration:install
 ```
+
+The installer publishes the config, creates the tables, installs the browser side for an Inertia app, and prints the next steps for your stack.
 
 **Livewire apps** need nothing else: the package serves its own script.
 

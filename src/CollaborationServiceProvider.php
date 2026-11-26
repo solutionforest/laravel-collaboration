@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use SolutionForest\Collaboration\Broadcasting\RoomChanged;
 use SolutionForest\Collaboration\Broadcasting\RoomNotifier;
+use SolutionForest\Collaboration\Commands\InstallCommand;
 use SolutionForest\Collaboration\Commands\PruneUploadsCommand;
 use SolutionForest\Collaboration\Contracts\AuthorizesRooms;
 use SolutionForest\Collaboration\Contracts\PresenceRepository;
@@ -147,7 +148,7 @@ final class CollaborationServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->commands([PruneUploadsCommand::class]);
+        $this->commands([InstallCommand::class, PruneUploadsCommand::class]);
 
         // Images inserted into drafts that were never saved.
         $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
