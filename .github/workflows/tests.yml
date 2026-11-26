@@ -13,14 +13,14 @@ concurrency:
 permissions:
   contents: read
 
-# Every job runs on our self-hosted runners. To change their labels without
-# editing this file, set the repository variable CI_RUNNER_LABELS to a JSON
-# array, e.g. ["self-hosted","linux","ephemeral"].
+# Every job runs on GitHub-hosted runners, free for public repositories.
+# Never point pull requests at self-hosted runners here: on a public
+# repository, anybody's pull request would run on them.
 
 jobs:
   php:
     name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -55,7 +55,7 @@ jobs:
 
   javascript:
     name: JavaScript · lint, tests, build
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
 
   browsers:
     name: Browsers · Livewire, React and Vue together
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
@@ -110,7 +110,7 @@ jobs:
 
   filament:
     name: Filament Collaboration on this core
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     # The branch of filament-collaboration that builds on this package. Set the
     # repository variable FILAMENT_COLLABORATION_REF to `main` once it is merged.
