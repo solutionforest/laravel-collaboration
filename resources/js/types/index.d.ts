@@ -10,6 +10,8 @@ export interface RoomConfig {
     fields: Record<string, FieldKind>
     /** What people see for each field: "Alice is in Title". */
     labels: Record<string, string>
+    /** Fields only one person edits at a time: `->lock()`. */
+    locks: string[]
     draft: string
     /** The input a save sends its unsynced edits in. */
     input: string
@@ -92,6 +94,8 @@ export class Room {
     indexOf(field: string, id: Id | null): number | null
     carets(field: string): Array<{ person: Person, anchor: number, head: number }>
     peopleIn(field: string): Person[]
+    /** Who holds a locked field right now, if somebody else does. */
+    lockedBy(field: string): Person | null
     /** What a form sends when it is saved; `Room::save()` reads it. */
     payload(): string
     on<E extends keyof RoomEvents>(event: E, callback: (detail: RoomEvents[E]) => void): () => void
@@ -112,10 +116,23 @@ export class HttpTransport {
 type Input = HTMLInputElement | HTMLTextAreaElement
 
 /** Makes an input or textarea collaborative. Returns what makes it an ordinary input again. */
-export function bindTextField(room: Room, field: string, element: Input, options?: { onRemoteChange?: (value: string) => void }): () => void
+export function bindTextField(room: Room, field: string, element: Input, options?: BindingOptions<string>): () => void
+
+export interface BindingOptions<TValue> {
+    /** Called with every value the binding writes into the element: others' edits, undo and redo. */
+    onValueChange?: (value: TValue) => void
+    /** @deprecated use `onValueChange` */
+    onRemoteChange?: (value: TValue) => void
+}
 
 /** Makes a select, a checkbox or a group of radios collaborative. */
-export function bindValueField(room: Room, field: string, target: HTMLInputElement | HTMLSelectElement | HTMLInputElement[], options?: { onRemoteChange?: (value: unknown) => void }): () => void
+export function bindValueField(room: Room, field: string, target: HTMLInputElement | HTMLSelectElement | HTMLInputElement[], options?: BindingOptions<unknown>): () => void
+
+/** Makes a locked field read-only while somebody else is in it. */
+export function lockWhileEditing(room: Room, field: string, element: HTMLElement): () => void
+
+/** Whether an input edits text with a caret, rather than a date, number or email. */
+export function isTextInput(element: Element | null): boolean
 
 export function renderAvatars(people: Person[], options?: { limit?: number, strings?: Record<string, string>, labels?: Record<string, string> }): HTMLElement
 

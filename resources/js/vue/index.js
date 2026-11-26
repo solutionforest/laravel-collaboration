@@ -1,9 +1,10 @@
 import { router, useForm } from '@inertiajs/vue3'
 import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
+import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
-import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
+import { avatarsOf, peopleIn } from '../ui/people.js'
 import { addStyles } from '../ui/styles.js'
 
 /**
@@ -58,10 +59,11 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
  *
  *     const form = useCollaborativeForm(() => props.collaboration, { title: props.post.title })
  *
- *     <input v-model="form.title" v-collaborate:title="form">
+ *     <input v-model="form.title" v-collaborate="form.field('title')">
  *     <button @click="form.put(`/posts/${post.id}`)">Save</button>
  *
- * Everything else is Inertia's: `errors`, `processing`, `transform()`, `put()`.
+ * `form.field()` only takes the form's own fields, so a typo is a type error;
+ * `v-collaborate:title="form"` works too. Everything else is Inertia's: `errors`, `processing`, `transform()`, `put()`.
  * `form.collaboration` holds the room, the people in it and its status.
  *
  * @template {Record<string, any>} TForm
@@ -90,6 +92,8 @@ export function useCollaborativeForm(config, data, options = {}) {
     // Under one key, so nothing collides with the form's own fields.
     return Object.assign(form, {
         collaboration,
+        /** What `v-collaborate` binds: `v-collaborate="form.field('title')"`. */
+        field: (/** @type {keyof TForm & string} */ name) => ({ form, name }),
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
             transform = callback
@@ -103,8 +107,9 @@ export function useCollaborativeForm(config, data, options = {}) {
 const bound = new WeakMap()
 
 /**
- * `v-collaborate:title="form"`: makes an input, textarea, select, checkbox
- * or radio collaborative, next to its usual `v-model`.
+ * `v-collaborate="form.field('title')"`, or `v-collaborate:title="form"`:
+ * makes an input, textarea, select, checkbox or radio collaborative, next to
+ * its usual `v-model`.
  *
  * @type {import('vue').Directive<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, any>}
  */
@@ -122,32 +127,40 @@ export const vCollaborate = {
  * @param {import('vue').DirectiveBinding<any>} binding
  */
 function connect(element, binding) {
-    const room = /** @type {Room | null} */ (unref(binding.value?.collaboration?.room) ?? null)
-    const field = binding.arg ?? ''
+    const form = binding.value?.form ?? binding.value
+    const field = binding.arg ?? binding.value?.name ?? ''
+    const room = /** @type {Room | null} */ (unref(form?.collaboration?.room) ?? null)
 
     if (!room || !field || bound.has(element)) return
 
-    bound.set(element, room.config.fields[field] === 'text' && !(element instanceof HTMLSelectElement)
-        ? bindTextField(room, field, element)
-        : bindChoice(room, field, element))
+    bound.set(element, room.config.fields[field] === 'text' && isTextInput(element)
+        ? bindTextField(room, field, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => (form[field] = value) })
+        : bindChoice(room, field, element, form))
 }
 
 /**
- * Picked values are shared when they change; the form's `v-model` shows others' choices.
+ * Anything but text with a caret is shared when it changes, as `v-model` has
+ * it: a checkbox group's list, a radio's value, a date.
  *
  * @param {Room} room
  * @param {string} field
  * @param {HTMLElement} element
+ * @param {Record<string, any>} form
  */
-function bindChoice(room, field, element) {
+function bindChoice(room, field, element, form) {
     const events = new AbortController()
     const { signal } = events
+    const unlock = lockWhileEditing(room, field, element)
 
-    element.addEventListener('change', (event) => room.change(field, valueOf(event)), { signal })
+    // After `v-model`'s own listener, so the form already holds the new value.
+    element.addEventListener('change', () => room.change(field, form[field]), { signal })
     element.addEventListener('focus', () => room.focus(field), { signal })
     element.addEventListener('blur', () => room.blur(field), { signal })
 
-    return () => events.abort()
+    return () => {
+        events.abort()
+        unlock()
+    }
 }
 
 /** The props every presence component takes: the form, or a `useCollaboration()`. */

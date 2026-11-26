@@ -7,6 +7,10 @@ namespace SolutionForest\Collaboration\Tests\Fixtures\Models;
 use Illuminate\Database\Eloquent\Model;
 use SolutionForest\Collaboration\Concerns\Collaborative;
 
+/**
+ * @property string $title
+ * @property string $status
+ */
 final class Post extends Model
 {
     use Collaborative;

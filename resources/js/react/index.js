@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react'
 import { createElement, useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react'
+import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
 import { Room } from '../core/room.js'
 import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
@@ -62,6 +63,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
  *
  *     <input {...form.field('title')} />
  *     <input type="radio" {...form.field('status', { value: 'draft' })} />
+ *     <input type="checkbox" {...form.field('channels', { value: 'email' })} />
  *     <button onClick={() => form.put(`/posts/${post.id}`)}>Save</button>
  *
  * Everything else is Inertia's: `errors`, `processing`, `transform()`, `put()`.
@@ -101,7 +103,8 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     /**
      * Props for an `<input>`, `<textarea>`, `<select>` or checkbox. For a
-     * radio, pass the value it stands for.
+     * radio, or a checkbox in a group whose value is a list, pass the value
+     * it stands for.
      *
      * @param {keyof TForm & string} name
      * @param {{value?: string}} [options]
@@ -112,9 +115,14 @@ export function useCollaborativeForm(config, data, options = {}) {
         fields.current.set(name, binding)
 
         const value = form.data[name]
+
+        // Text that merges by character is written by its binding, never by React: a render
+        // with a value a moment old would otherwise drop the last keystroke, and share that.
+        const isLiveText = config?.fields?.[name] === 'text' && option === undefined && typeof value !== 'boolean'
+
         const state = option !== undefined
-            ? { value: option, checked: String(value) === option }
-            : typeof value === 'boolean' ? { checked: value } : { value: value ?? '' }
+            ? { value: option, checked: Array.isArray(value) ? value.map(String).includes(String(option)) : String(value) === String(option) }
+            : typeof value === 'boolean' ? { checked: value } : isLiveText ? { defaultValue: value ?? '' } : { value: value ?? '' }
 
         return {
             name,
@@ -147,10 +155,13 @@ class FieldBinding {
     /** @type {(() => void) | null} */
     unbindText = null
 
+    /** @type {(() => void) | null} */
+    unlock = null
+
     /**
      * @param {string} name
      * @param {() => Room | null} room
-     * @param {() => {setData: (field: string, value: any) => void}} form
+     * @param {() => {data: Record<string, any>, setData: (field: string, value: any) => void}} form
      */
     constructor(name, room, form) {
         this.name = name
@@ -167,24 +178,39 @@ class FieldBinding {
         this.connect()
     }
 
-    /** Text is bound to its element, which knows where the caret is. */
+    /**
+     * Text with a caret is bound to its element, which knows where the caret
+     * is; anything else is shared on change. Either way, a locked field is
+     * read-only while somebody else is in it.
+     */
     connect() {
         const room = this.room()
         const element = this.element
 
-        if (this.unbindText || !room || !element || element instanceof HTMLSelectElement || room.config.fields[this.name] !== 'text') return
+        if (this.unbindText || this.unlock || !room || !element) return
 
-        this.unbindText = bindTextField(room, this.name, element)
+        if (room.config.fields[this.name] === 'text' && isTextInput(element)) {
+            this.unbindText = bindTextField(room, this.name, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => this.form().setData(this.name, value) })
+        } else {
+            this.unlock = lockWhileEditing(room, this.name, element)
+        }
     }
 
     /** @param {any} event */
     onChange = (event) => {
-        const value = valueOf(event)
+        const form = this.form()
+        const current = form.data[this.name]
+        const target = event?.target
 
-        this.form().setData(this.name, value)
+        // A checkbox in a group adds or removes its value from the list.
+        const value = target?.type === 'checkbox' && Array.isArray(current)
+            ? (target.checked ? [...current, target.value] : current.filter((item) => String(item) !== target.value))
+            : valueOf(event)
 
-        // Picked values are shared on change; text by its binding.
-        if (this.room()?.config.fields[this.name] === 'value') this.room()?.change(this.name, value)
+        form.setData(this.name, value)
+
+        // Text with a caret is shared by its binding; everything else here.
+        if (this.room()?.config.fields[this.name] && !this.unbindText) this.room()?.change(this.name, value)
     }
 
     onFocus = () => this.room()?.focus(this.name)
@@ -193,7 +219,9 @@ class FieldBinding {
 
     unbind() {
         this.unbindText?.()
+        this.unlock?.()
         this.unbindText = null
+        this.unlock = null
     }
 }
 

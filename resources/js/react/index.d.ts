@@ -26,12 +26,14 @@ export interface FieldProps {
     onFocus: () => void
     onBlur: () => void
     value?: any
+    /** Text that merges by character: the binding writes it, not React. */
+    defaultValue?: any
     checked?: boolean
 }
 
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaFormProps<TForm> & {
-    /** Props for the field's input; for a radio, pass the value it stands for. */
-    field(name: keyof TForm & string, options?: { value?: string }): FieldProps
+    /** Props for the field's input. For a radio, or a checkbox in a group, pass the value it stands for. */
+    field(name: keyof TForm & string, options?: { value?: string | number }): FieldProps
     collaboration: Collaboration
 }
 
@@ -47,6 +49,8 @@ interface PresenceProps {
 
 export function Avatars(props: PresenceProps & { limit?: number }): ReactElement | null
 
-export function FieldPeople(props: PresenceProps & { field: string }): ReactElement
+/** With a form, `field` must be one of its fields. */
+export function FieldPeople<TForm extends Record<string, any>>(props: { form: CollaborativeForm<TForm>, field: keyof TForm & string, className?: string }): ReactElement
+export function FieldPeople(props: { collaboration: Collaboration, field: string, className?: string }): ReactElement
 
 export function Status(props: PresenceProps): ReactElement

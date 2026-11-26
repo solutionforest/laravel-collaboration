@@ -34,7 +34,7 @@ const { router } = await import('@inertiajs/react')
 
 const config = {
     id: 'room', url: '/sync', csrf: 'csrf', token: 'token', client: 7, mode: 'editing',
-    fields: { title: 'text', status: 'value' }, labels: {}, draft: 'draft', input: '_collaboration',
+    fields: { title: 'text', email: 'text', status: 'value', channels: 'value' }, labels: {}, draft: 'draft', input: '_collaboration',
     interval: 1000, channel: null, avatarLimit: 5, reportErrors: false, user: 'me', strings: {},
 }
 
@@ -55,12 +55,14 @@ test('React keeps each input bound across renders, and keeps the app\'s own tran
     let form
 
     function Edit() {
-        form = useCollaborativeForm(config, { title: 'Hello', status: 'draft' })
+        form = useCollaborativeForm(config, { title: 'Hello', email: 'a@example.com', status: 'draft', channels: ['web'] })
 
         return React.createElement('div', null,
             React.createElement('input', { id: 'title', ...form.field('title') }),
             React.createElement('input', { id: 'draft', type: 'radio', ...form.field('status', { value: 'draft' }) }),
             React.createElement('input', { id: 'published', type: 'radio', ...form.field('status', { value: 'published' }) }),
+            React.createElement('input', { id: 'email', type: 'email', ...form.field('email') }),
+            ...['web', 'sms'].map((channel) => React.createElement('input', { key: channel, id: channel, type: 'checkbox', ...form.field('channels', { value: channel }) })),
         )
     }
 
@@ -81,6 +83,16 @@ test('React keeps each input bound across renders, and keeps the app\'s own tran
     // Radios: each says whether it is the chosen one.
     assert.equal(document.getElementById('draft').checked, true)
     assert.equal(document.getElementById('published').checked, false)
+
+    // An email has no caret to keep: it is shared as a whole value, not bound as text.
+    assert.equal(room.bindings.has('email'), false)
+
+    // A checkbox in a group adds its value to the list, or takes it out.
+    assert.equal(document.getElementById('web').checked, true)
+    await act(async () => document.getElementById('sms').click())
+    assert.deepEqual(form.data.channels, ['web', 'sms'])
+    await act(async () => document.getElementById('web').click())
+    assert.deepEqual(form.data.channels, ['sms'])
 
     // A save runs the app's transform, then adds the edits the server has not seen.
     let sent = null

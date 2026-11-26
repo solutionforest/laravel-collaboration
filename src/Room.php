@@ -10,21 +10,23 @@ use DateTimeInterface;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 use JsonSerializable;
 use SolutionForest\Collaboration\Broadcasting\Audience;
-use SolutionForest\Collaboration\Concerns\Collaborative;
 use SolutionForest\Collaboration\Crdt\Html;
 use SolutionForest\Collaboration\Documents\DocumentRepository;
 use SolutionForest\Collaboration\Documents\EditTrail;
 use SolutionForest\Collaboration\Documents\SharedField;
 use SolutionForest\Collaboration\Enums\FieldKind;
 use SolutionForest\Collaboration\Enums\PresenceMode;
+use SolutionForest\Collaboration\Exceptions\UnknownFieldKind;
 use SolutionForest\Collaboration\Presence\Identity;
 use SolutionForest\Collaboration\Rooms\RoomAuthorizer;
 use SolutionForest\Collaboration\Rooms\RoomContext;
 use SolutionForest\Collaboration\Rooms\RoomResolver;
 use SolutionForest\Collaboration\Saving\LiveSave;
 use SolutionForest\Collaboration\Support\Data;
+use SolutionForest\Collaboration\Support\ModelFields;
 use SolutionForest\Collaboration\Support\SaveLock;
 
 /**
@@ -53,6 +55,9 @@ final class Room implements Arrayable, JsonSerializable
     /** @var array<string, list<string>> */
     private array $allowed = [];
 
+    /** @var list<string> */
+    private array $locks = [];
+
     private PresenceMode $mode = PresenceMode::Editing;
 
     private ?string $locale = null;
@@ -66,22 +71,22 @@ final class Room implements Arrayable, JsonSerializable
 
     public function __construct(private readonly Model $record)
     {
-        if (in_array(Collaborative::class, class_uses_recursive($record), true)) {
-            /** @var Model&Collaborative $record */
-            $this->fields($record->collaborativeFields());
+        // The `Collaborative` trait says once, on the model, which fields every room has.
+        if (method_exists($record, 'collaborativeFields')) {
+            $this->fields(self::fieldListOf($record->collaborativeFields()));
         }
     }
 
     /** Fields that merge character by character, such as a title or a textarea. */
     public function text(string ...$fields): self
     {
-        return $this->add(FieldKind::Text, $fields);
+        return $this->add(FieldKind::Text, array_values($fields));
     }
 
     /** Fields edited in a rich text editor such as TipTap, kept as HTML or as JSON. */
     public function rich(string ...$fields): self
     {
-        return $this->add(FieldKind::RichText, $fields);
+        return $this->add(FieldKind::RichText, array_values($fields));
     }
 
     /**
@@ -102,19 +107,38 @@ final class Room implements Arrayable, JsonSerializable
     }
 
     /**
-     * Several fields at once: a name alone is text, or name => kind.
+     * Several fields at once, as name => kind. A name alone takes its kind
+     * from the model's casts: a boolean, number, date or enum is a value,
+     * anything else text.
      *
-     *     ->fields(['title', 'body' => 'rich', 'status' => 'value'])
+     *     ->fields(['title', 'body' => FieldKind::RichText, 'status' => 'value'])
      *
      * @param  array<int|string, string|FieldKind>  $fields
+     *
+     * @throws UnknownFieldKind
      */
     public function fields(array $fields): self
     {
         foreach ($fields as $name => $kind) {
-            [$name, $kind] = is_int($name) ? [(string) $kind, FieldKind::Text] : [$name, $kind];
+            if (is_int($name)) {
+                $name = is_string($kind) ? $kind : throw new InvalidArgumentException("A field of kind [{$kind->value}] needs a name: ['body' => FieldKind::{$kind->name}].");
+                $kind = ModelFields::kindOf($this->record, $name);
+            }
 
-            $this->fields[$name] = $kind instanceof FieldKind ? $kind : FieldKind::from($kind);
+            $this->fields[$name] = $kind instanceof FieldKind ? $kind : (FieldKind::tryFrom($kind) ?? throw UnknownFieldKind::named($kind, $name));
         }
+
+        return $this;
+    }
+
+    /**
+     * Fields only one person edits at a time: while somebody is in one, it
+     * is read-only for everybody else, and says who is in it. For fields
+     * where a merge makes no sense, such as a price or a slug.
+     */
+    public function lock(string ...$fields): self
+    {
+        $this->locks = array_values(array_unique([...$this->locks, ...$fields]));
 
         return $this;
     }
@@ -202,6 +226,11 @@ final class Room implements Arrayable, JsonSerializable
     /** What the browser starts the room from. Empty when nobody may join it. */
     public function toArray(): array
     {
+        // A typo in a field name fails here, in development, not silently in the browser.
+        if ($this->record->exists && config('app.debug')) {
+            ModelFields::assertExist($this->record, [...array_keys($this->fields), ...$this->locks]);
+        }
+
         $user = $this->user();
 
         if ($user === null || ! RoomAuthorizer::allows($user, $this->record, $this->isEditing() ? 'update' : 'view')) {
@@ -225,6 +254,7 @@ final class Room implements Arrayable, JsonSerializable
             'mode' => $this->mode->value,
             'fields' => (object) array_map(static fn (FieldKind $kind): string => $kind->value, $live),
             'labels' => (object) $this->resolvedLabels(),
+            'locks' => array_values(array_intersect($this->locks, array_keys($this->fields))),
             'draft' => $context->draft(),
             'input' => self::INPUT,
             'interval' => Collaboration::$pollingInterval,
@@ -293,7 +323,11 @@ final class Room implements Arrayable, JsonSerializable
         return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync);
     }
 
-    /** The current values of the room's fields, as the shared draft holds them. */
+    /**
+     * The current values of the room's fields, as the shared draft holds them.
+     *
+     * @return array<string, mixed>
+     */
     public function currentValues(): array
     {
         $values = [];
@@ -389,7 +423,7 @@ final class Room implements Arrayable, JsonSerializable
             model: $this->record::class,
             key: Data::string($this->record->getKey()),
             expiresAt: now()->getTimestamp() + max(1, Data::int(Collaboration::config('token_lifetime'), 900)),
-            allowed: array_intersect_key($this->allowed, $live),
+            allowed: array_intersect_key($this->allowedValuesOfFields(), $live),
             permissions: Permissions::version($this->id()),
             locale: $this->locale,
             meta: $this->meta,
@@ -432,7 +466,7 @@ final class Room implements Arrayable, JsonSerializable
     {
         foreach ($values as $field => $value) {
             if ($this->fields[$field] === FieldKind::RichText && is_array($value) && ! $this->keepsJson($field)) {
-                $values[$field] = Html::fromDocument($value);
+                $values[$field] = Html::fromDocument(Data::map($value));
             }
         }
 
@@ -464,7 +498,43 @@ final class Room implements Arrayable, JsonSerializable
     {
         $values = is_string($allowed) ? $allowed::cases() : $allowed;
 
-        return array_values(array_map(static fn (mixed $value): string => (string) ($value instanceof BackedEnum ? $value->value : $value), $values));
+        return array_map(static fn (string|int|BackedEnum $value): string => (string) ($value instanceof BackedEnum ? $value->value : $value), $values);
+    }
+
+    /**
+     * What a model's `$collaborative` holds, checked: names, and kinds as strings or cases.
+     *
+     * @return array<int|string, string|FieldKind>
+     */
+    private static function fieldListOf(mixed $fields): array
+    {
+        $list = [];
+
+        foreach (Data::map($fields) as $name => $kind) {
+            $list[$name] = $kind instanceof FieldKind ? $kind : Data::string($kind);
+        }
+
+        return $list;
+    }
+
+    /**
+     * The values each picked field may take: what `value()` was given, or an enum cast's cases.
+     *
+     * @return array<string, list<string>>
+     */
+    private function allowedValuesOfFields(): array
+    {
+        $allowed = $this->allowed;
+
+        foreach ($this->fields as $field => $kind) {
+            $enum = $kind === FieldKind::Value ? ModelFields::enumOf($this->record, $field) : null;
+
+            if (! isset($allowed[$field]) && $enum !== null) {
+                $allowed[$field] = self::allowedValues($enum);
+            }
+        }
+
+        return $allowed;
     }
 
     /** @param list<string> $fields */

@@ -18,7 +18,15 @@ export interface CollaborationOptions {
     prop?: string
 }
 
+/** What `v-collaborate` binds, from `form.field('title')`. */
+export interface FieldReference {
+    form: { collaboration: { room: Room | null } }
+    name: string
+}
+
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaForm<TForm> & {
+    /** For `v-collaborate="form.field('title')"`: only the form's own fields. */
+    field(name: keyof TForm & string): FieldReference
     collaboration: {
         room: Room | null
         people: Person[]
@@ -33,7 +41,7 @@ export function useCollaboration(config: () => RoomConfig | null, options?: Coll
 export function useCollaborativeForm<TForm extends Record<string, any>>(config: () => RoomConfig | null, data: TForm, options?: CollaborationOptions): CollaborativeForm<TForm>
 
 /** `v-collaborate:title="form"`, next to the input's `v-model`. */
-export const vCollaborate: Directive<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, { collaboration: { room: Room | null } }>
+export const vCollaborate: Directive<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, FieldReference | { collaboration: { room: Room | null } }>
 
 type PresenceProps = { form?: { collaboration: unknown }, collaboration?: Collaboration }
 

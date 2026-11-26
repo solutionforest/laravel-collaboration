@@ -26,6 +26,7 @@ return [
         'you' => 'You, in another tab',
         'idle' => 'Away',
         'in_field' => 'In :field',
+        'locked_field' => ':name is editing this field',
         'more' => ':count more',
     ],
 ];

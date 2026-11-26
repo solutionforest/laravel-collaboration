@@ -7,6 +7,9 @@ declare const config: RoomConfig
 
 const form = useCollaborativeForm(() => config, { title: '', status: 'draft' })
 const title: string = form.title
+const reference = form.field('title')
+// @ts-expect-error a misspelt field is a type error
+form.field('titel')
 const names: string[] = form.collaboration.people.map((person) => person.name)
 const collaboration = useCollaboration(() => config)
 const room: Room | null = collaboration.room.value
@@ -16,4 +19,4 @@ const stop: () => void = plain.on('change', ({ field, value }) => console.log(fi
 const unbind = bindTextField(plain, 'title', document.createElement('input'))
 const extension = Collaborative.configure({ room: plain, field: 'body' })
 
-export { title, names, room, stop, unbind, extension, vCollaborate }
+export { reference, title, names, room, stop, unbind, extension, vCollaborate }

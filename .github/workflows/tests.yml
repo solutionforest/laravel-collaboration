@@ -49,6 +49,10 @@ jobs:
         if: matrix.php == '8.4' && matrix.laravel == '13'
         run: vendor/bin/pint --test
 
+      - name: PHPStan, level 10
+        if: matrix.php == '8.4' && matrix.laravel == '13'
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
   javascript:
     name: JavaScript · lint, tests, build
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","linux"]') }}

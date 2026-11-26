@@ -1,5 +1,6 @@
 import { bindTextField } from '../bindings/text-field.js'
 import { bindValueField } from '../bindings/value-field.js'
+import { isTextInput } from '../bindings/lock.js'
 import { Room } from '../core/room.js'
 import { describe, renderAvatars, translate } from '../ui/avatars.js'
 
@@ -68,11 +69,13 @@ class LivewireRoom {
             if (!elements.length || kind === 'rich') continue
 
             const path = this.statePath + field
-            const onRemoteChange = (/** @type {any} */ value) => this.wire.$set(path, value, false)
+            const onValueChange = (/** @type {any} */ value) => this.wire.$set(path, value, false)
             const [first] = elements
-            const unbind = kind === 'text' && (first instanceof HTMLInputElement || first instanceof HTMLTextAreaElement)
-                ? bindTextField(this.room, field, first, { onRemoteChange })
-                : bindValueField(this.room, field, /** @type {any} */ (elements.length > 1 ? elements : first), { onRemoteChange })
+
+            // Text with a caret merges by character; dates, numbers, choices and groups by latest value.
+            const unbind = kind === 'text' && elements.length === 1 && isTextInput(first)
+                ? bindTextField(this.room, field, /** @type {HTMLInputElement} */ (first), { onValueChange })
+                : bindValueField(this.room, field, /** @type {any} */ (elements.length > 1 ? elements : first), { onValueChange })
 
             this.bound.set(field, { elements, unbind })
         }

@@ -17,6 +17,12 @@ export function Edit({ post, collaboration }: { post: { id: number, title: strin
             <FieldPeople form={form} field="title" />
             <input {...form.field('title')} />
             <input type="radio" {...form.field('status', { value: 'draft' })} />
+            {/* @ts-expect-error a misspelt field is a type error */}
+            <input {...form.field('titel')} />
+            {/* @ts-expect-error so is one in FieldPeople */}
+            <FieldPeople form={form} field="titel" />
+            {/* @ts-expect-error and in the editor */}
+            <CollaborativeEditor form={form} field="bdy" />
             <CollaborativeEditor form={form} field="body" />
         </form>
     )
