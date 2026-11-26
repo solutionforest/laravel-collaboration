@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Family from './Family.vue'
 import { withBase } from 'vitepress'
 
 const gallery = [
@@ -73,6 +74,8 @@ const form = useCollaborativeForm(collaboration, data)
                 </figure>
             </div>
         </section>
+
+        <Family current="laravel" />
 
         <section class="home-section home-cta">
             <h2>Requirements</h2>

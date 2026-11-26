@@ -4,6 +4,8 @@
 
 [![Latest version](https://img.shields.io/packagist/v/solutionforest/laravel-collaboration.svg)](https://packagist.org/packages/solutionforest/laravel-collaboration) [![Tests](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml) [![License](https://img.shields.io/packagist/l/solutionforest/laravel-collaboration.svg)](LICENSE)
 
+> Using Filament? **[Filament Collaboration](https://solutionforest.github.io/filament-collaboration/)** is built on this package and makes every field of a Filament panel live.
+
 Google Docs-style editing for any Laravel app. People editing the same record see each other, see each other's carets, and type into the same fields at the same time. Saving keeps everybody's work.
 
 It works with **Livewire**, **Inertia + React** and **Inertia + Vue**, and with **TipTap** for rich text. It runs over plain HTTP, so you don't need a WebSocket server. Laravel Reverb makes it faster if you have one.
@@ -73,15 +75,38 @@ php artisan collaboration:install
 
 The installer publishes the config, creates the tables, installs the browser side for an Inertia app, and prints the next steps for your stack.
 
-**Livewire apps** need nothing else: the package serves its own script.
+<details open>
+<summary><b>Livewire</b></summary>
 
-**Inertia apps** also install the browser side, straight from the vendor folder:
+Nothing else: the package serves its own script, and `<x-collaboration::room>` adds it to the page.
+
+</details>
+
+<details>
+<summary><b>Inertia + React</b></summary>
+
+Install the browser side, straight from the vendor folder:
 
 ```bash
 npm install ./vendor/solutionforest/laravel-collaboration
 ```
 
-It imports React, Vue, Inertia and TipTap from your app, so it adds nothing to your bundle that you don't already have.
+It imports React, Inertia and TipTap from your app, so it adds nothing to your bundle that you don't already have. Import from `@solutionforest/laravel-collaboration/react`.
+
+</details>
+
+<details>
+<summary><b>Inertia + Vue</b></summary>
+
+Install the browser side, straight from the vendor folder:
+
+```bash
+npm install ./vendor/solutionforest/laravel-collaboration
+```
+
+It imports Vue, Inertia and TipTap from your app, so it adds nothing to your bundle that you don't already have. Import from `@solutionforest/laravel-collaboration/vue`.
+
+</details>
 
 ## Quick start
 
@@ -259,16 +284,30 @@ const form = useCollaborativeForm(() => props.collaboration, {
 
 Rich text fields are edited with [TipTap](https://tiptap.dev). The column decides how they are stored: a `json` or `array` cast keeps TipTap's JSON, and anything else is saved as HTML.
 
-**React and Vue:** `<CollaborativeEditor form={form} field="body" />` comes with StarterKit. Pass `extensions` to use your own.
-
-**Livewire:** one component, nothing to build:
-
 ```blade
+{{-- Livewire: one component, nothing to build --}}
 <x-collaboration::editor field="body" class="prose" />
-<x-collaboration::editor field="body" images />   {{-- with image uploads --}}
 ```
 
-The property holding a rich text field receives TipTap's JSON as people type, so type it `array|string|null`. To use your own TipTap setup instead, add the `Collaborative` extension to it; `Collaboration.whenReady(element, (room) => …)` hands you the component's room.
+```jsx
+// React
+import { CollaborativeEditor } from '@solutionforest/laravel-collaboration/react/editor'
+
+<CollaborativeEditor form={form} field="body" />
+```
+
+```vue
+<!-- Vue -->
+<script setup>
+import { CollaborativeEditor } from '@solutionforest/laravel-collaboration/vue/editor'
+</script>
+
+<template>
+    <CollaborativeEditor :form="form" field="body" />
+</template>
+```
+
+The editor comes with StarterKit; in React and Vue, pass `extensions` to use your own. In Livewire, the property holding a rich text field receives TipTap's JSON as people type, so type it `array|string|null`. To use your own TipTap setup instead, add the `Collaborative` extension to it; `Collaboration.whenReady(element, (room) => …)` hands you the component's room.
 
 **Any other page:** the framework-free client works with plain DOM elements:
 
@@ -283,10 +322,29 @@ bindTextField(room, 'title', document.querySelector('#title'))
 
 With `Features::uploads()` on, pasted or dropped images are uploaded at once, so everybody sees them. Add TipTap's Image extension and turn it on:
 
+```blade
+{{-- Livewire --}}
+<x-collaboration::editor field="body" images />
+```
+
 ```jsx
+// React
 import Image from '@tiptap/extension-image'
+import StarterKit from '@tiptap/starter-kit'
 
 <CollaborativeEditor form={form} field="body" extensions={[StarterKit, Image]} images />
+```
+
+```vue
+<!-- Vue -->
+<script setup>
+import Image from '@tiptap/extension-image'
+import StarterKit from '@tiptap/starter-kit'
+</script>
+
+<template>
+    <CollaborativeEditor :form="form" field="body" :extensions="[StarterKit, Image]" images />
+</template>
 ```
 
 Images are stored on the `public` disk (`uploads_disk` in the config). One that no saved record ends up using is deleted by `collaboration:prune-uploads`, which runs daily.
@@ -352,6 +410,14 @@ Collaboration::room($invoice)->items('lines', text: ['description']);   // or 'l
 
 Sub-fields named in `text` merge by character, with carets; the others take the latest change. Each item is saved with a `key`, so it keeps its identity from one save to the next.
 
+```blade
+{{-- Livewire --}}
+@foreach ($lines as $index => $line)
+    <input wire:model="lines.{{ $index }}.description" wire:key="{{ $line['key'] }}">
+@endforeach
+<button type="button" x-on:click="Collaboration.items($el, 'lines').add({ description: '' })">Add a line</button>
+```
+
 ```jsx
 // React
 const lines = form.items('lines')
@@ -371,14 +437,6 @@ const lines = form.items('lines')
     <input v-model="line.description" v-collaborate="form.items('lines').field(line.key, 'description')">
 </div>
 <button type="button" @click="form.items('lines').add({ description: '' })">Add a line</button>
-```
-
-```blade
-{{-- Livewire --}}
-@foreach ($lines as $index => $line)
-    <input wire:model="lines.{{ $index }}.description" wire:key="{{ $line['key'] }}">
-@endforeach
-<button type="button" x-on:click="Collaboration.items($el, 'lines').add({ description: '' })">Add a line</button>
 ```
 
 ### Create pages
@@ -407,15 +465,30 @@ Their components have their own imports too, so an app without them doesn't bund
 
 With `Features::comments()` on, people can comment on a record, or on one field of it, and resolve comments when they're done:
 
-```jsx
-import { Comments } from '@solutionforest/laravel-collaboration/react/comments'   // Vue: …/vue/comments
+```blade
+{{-- Livewire, inside the component --}}
+<x-collaboration::comments />
+<x-collaboration::comments field="title" />   {{-- only the title's comments --}}
+```
 
-<Comments form={form} />                 // Vue: <Comments :form="form" />
+```jsx
+// React
+import { Comments } from '@solutionforest/laravel-collaboration/react/comments'
+
+<Comments form={form} />
 <Comments form={form} field="title" />   // only the title's comments
 ```
 
-```blade
-<x-collaboration::comments />            {{-- Livewire, inside the component --}}
+```vue
+<!-- Vue -->
+<script setup>
+import { Comments } from '@solutionforest/laravel-collaboration/vue/comments'
+</script>
+
+<template>
+    <Comments :form="form" />
+    <Comments :form="form" field="title" />   <!-- only the title's comments -->
+</template>
 ```
 
 `useComments(form)` gives the list and `post()`, `resolve()` and `reopen()` for your own UI. Say who may be mentioned, and send your own notifications from the `CommentPosted` event:
@@ -430,14 +503,27 @@ Event::listen(CommentPosted::class, fn (CommentPosted $event) => /* notify each 
 
 The shared draft keeps versions while people edit, every few minutes, and at each save. With `Features::history()` on, show them, and let editors bring one back for everybody:
 
-```jsx
-import { History } from '@solutionforest/laravel-collaboration/react/history'     // Vue: …/vue/history
-
-<History form={form} />                  // Vue: <History :form="form" />
+```blade
+{{-- Livewire --}}
+<x-collaboration::history />
 ```
 
-```blade
-<x-collaboration::history />             {{-- Livewire --}}
+```jsx
+// React
+import { History } from '@solutionforest/laravel-collaboration/react/history'
+
+<History form={form} />
+```
+
+```vue
+<!-- Vue -->
+<script setup>
+import { History } from '@solutionforest/laravel-collaboration/vue/history'
+</script>
+
+<template>
+    <History :form="form" />
+</template>
 ```
 
 Restoring keeps the draft as it was in the history too, so it can be undone. `useVersions(form)` gives the list and `restore()` for your own UI.
@@ -450,22 +536,36 @@ Click somebody's face in the avatars to follow them: the page brings whichever f
 
 Show, in a list or a table, who is on each record right now:
 
-```php
-Inertia::render('Posts/Index', ['posts' => $posts, 'presence' => Collaboration::presence($posts)]);
-```
-
-```jsx
-const presence = useRecordPresence(props.presence)          // React; Vue: useRecordPresence(() => props.presence)
-
-<RecordPeople presence={presence} record={post.id} />
-```
-
 ```blade
+{{-- Livewire --}}
 <x-collaboration::record-presence :presence="Collaboration::presence($posts)">
     @foreach ($posts as $post)
         <tr><td>{{ $post->title }}</td><td><x-collaboration::record-people :record="$post->id" /></td></tr>
     @endforeach
 </x-collaboration::record-presence>
+```
+
+```jsx
+// React, with 'presence' => Collaboration::presence($posts) in the Inertia props
+import { RecordPeople, useRecordPresence } from '@solutionforest/laravel-collaboration/react'
+
+const presence = useRecordPresence(props.presence)
+
+<RecordPeople presence={presence} record={post.id} />
+```
+
+```vue
+<!-- Vue, with 'presence' => Collaboration::presence($posts) in the Inertia props -->
+<script setup>
+import { RecordPeople, useRecordPresence } from '@solutionforest/laravel-collaboration/vue'
+
+const props = defineProps({ posts: Array, presence: Object })
+const presence = useRecordPresence(() => props.presence)
+</script>
+
+<template>
+    <RecordPeople :presence="presence" :record="post.id" />
+</template>
 ```
 
 Only records this person may `view` are included, and the faces refresh every few seconds.
@@ -520,12 +620,14 @@ The package adds one small stylesheet. To style everything yourself, turn it off
 To draw the faces or the field labels with your own components:
 
 ```jsx
+// React
 <Avatars form={form}>
     {({ shown, more, follow }) => shown.map((person) => <MyAvatar key={person.client} person={person} onClick={() => follow(person.client)} />)}
 </Avatars>
 ```
 
 ```vue
+<!-- Vue -->
 <Avatars :form="form" v-slot="{ shown, follow }">
     <MyAvatar v-for="person in shown" :key="person.client" :person="person" @click="follow(person.client)" />
 </Avatars>

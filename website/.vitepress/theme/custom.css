@@ -78,18 +78,82 @@
 }
 
 .VPHero .image-container {
+    height: auto;
     transform: none;
 }
 
-.VPHero .image-src {
+/* The landing page's picture, with a tab per stack. */
+.hero-stacks {
+    position: relative;
+    z-index: 1;
+    width: 476px;
     max-width: 100%;
-    max-height: 560px;
-    width: 560px;
+    margin: 0 auto;
+}
+
+.hero-stacks .stack-tabs-bar {
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.hero-stacks img {
+    display: block;
+    width: 100%;
+    height: 476px;
     object-fit: cover;
     object-position: top;
     border: 1px solid var(--site-border-strong);
     border-radius: 14px;
     box-shadow: 0 24px 48px -24px rgb(0 0 0 / 25%);
+}
+
+@media (max-width: 959px) {
+    .hero-stacks {
+        margin: 96px auto 72px;
+        padding: 0 24px;
+    }
+
+    .hero-stacks img {
+        height: 360px;
+    }
+}
+
+/* Tabs: Livewire, React and Vue. Picking one picks it on every page. */
+.stack-tabs-bar {
+    display: flex;
+    gap: 4px;
+    width: fit-content;
+    padding: 4px;
+    border: 1px solid var(--site-border-strong);
+    border-radius: 10px;
+    background: var(--vp-c-bg-soft);
+}
+
+.stack-tabs-bar button {
+    padding: 4px 14px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--vp-c-text-2);
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.stack-tabs-bar button:hover {
+    color: var(--vp-c-text-1);
+}
+
+.stack-tabs-bar button.active {
+    color: var(--vp-c-brand-1);
+    background: var(--vp-c-bg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+}
+
+.stack-tabs {
+    margin: 16px 0;
+}
+
+.stack-tabs-panel > :first-child {
+    margin-top: 12px;
 }
 
 .VPFeature {
@@ -549,4 +613,73 @@
         bottom: 12px;
         transform: none;
     }
+}
+
+/* The two packages, side by side: the same block on both sites. */
+.home-family {
+    display: grid;
+    gap: 16px;
+}
+
+@media (min-width: 768px) {
+    .home-family {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.home-family-card {
+    padding: 24px;
+    border: 1px solid var(--site-border-strong);
+    border-radius: 14px;
+    background: var(--site-card);
+}
+
+.home-family-card.current {
+    border-color: var(--vp-c-brand-1);
+}
+
+.home-family-card h3 {
+    margin: 4px 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.home-family-card p {
+    margin: 0;
+    color: var(--vp-c-text-2);
+    line-height: 1.6;
+}
+
+.home-family-stack {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--vp-c-brand-1) !important;
+}
+
+.home-family-here {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    vertical-align: middle;
+    color: var(--vp-c-brand-1);
+    background: var(--vp-c-brand-soft);
+}
+
+.home-family-links {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    font-weight: 500;
+}
+
+.home-family-links a {
+    color: var(--vp-c-brand-1);
+    text-decoration: none;
+}
+
+.home-family-links a:hover {
+    text-decoration: underline;
 }
