@@ -85,7 +85,7 @@ test('React keeps each input bound across renders, and keeps the app\'s own tran
     assert.equal(document.getElementById('published').checked, false)
 
     // An email has no caret to keep: it is shared as a whole value, not bound as text.
-    assert.equal(room.bindings.has('email'), false)
+    assert.equal(room.bindings.get('email')?.render, undefined)
 
     // A checkbox in a group adds its value to the list, or takes it out.
     assert.equal(document.getElementById('web').checked, true)

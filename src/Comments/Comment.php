@@ -54,15 +54,16 @@ final readonly class Comment
     }
 
     /**
-     * The body as HTML: escaped, with each mention highlighted.
+     * The body as HTML: escaped, with each mention highlighted. The class
+     * defaults to the one filament-collaboration's styles and tests expect.
      */
-    public function html(): string
+    public function html(string $mentionClass = 'fi-collab-mention'): string
     {
         $html = e($this->body);
 
         foreach ($this->mentions as $mention) {
             $name = e('@'.$mention->name);
-            $html = str_replace($name, '<span class="collab-mention">'.$name.'</span>', $html);
+            $html = str_replace($name, '<span class="'.e($mentionClass).'">'.$name.'</span>', $html);
         }
 
         return nl2br($html, false);

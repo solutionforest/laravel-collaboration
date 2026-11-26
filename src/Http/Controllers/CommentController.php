@@ -79,7 +79,7 @@ final readonly class CommentController
                 'id' => $comment->id,
                 'field' => $comment->field,
                 'body' => $comment->body,
-                'html' => $comment->html(),
+                'html' => $comment->html('collab-mention'),
                 'author' => $comment->authorName,
                 'mine' => $comment->authorType === $room->user::class && $comment->authorId === Data::string($room->user->getAuthIdentifier()),
                 'mentions' => array_map(static fn (Mention $mention): string => $mention->name, $comment->mentions),
