@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/). Until 1.0.0, a minor version may include breaking changes; they are listed under **Changed**.
 
+## [0.2.1] - 2026-11-26
+
+### Added
+
+- The merge engine can be imported on its own, as `@solutionforest/laravel-collaboration/crdt/document.js` and its siblings. filament-collaboration's browser script uses it this way instead of keeping a copy.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added
@@ -36,5 +42,6 @@ All notable changes to this package are documented here. The format follows [Kee
 - **Adapters:** Livewire, Inertia + React and Inertia + Vue, with TypeScript declarations.
 - **Hooks for integrations,** used by filament-collaboration.
 
+[0.2.1]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.2.1
 [0.2.0]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.2.0
 [0.1.0]: https://github.com/solutionforest/laravel-collaboration/releases/tag/v0.1.0

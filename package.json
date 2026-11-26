@@ -1,6 +1,6 @@
 {
     "name": "@solutionforest/laravel-collaboration",
-    "version": "0.1.0",
+    "version": "0.2.1",
     "private": true,
     "description": "The browser side of solutionforest/laravel-collaboration: a framework-free client, and adapters for Livewire, React, Vue and TipTap.",
     "license": "MIT",
@@ -53,7 +53,8 @@
         "./tiptap": {
             "types": "./resources/js/tiptap/index.d.ts",
             "default": "./resources/js/tiptap/index.js"
-        }
+        },
+        "./crdt/*": "./resources/js/crdt/*"
     },
     "files": [
         "resources/js",
