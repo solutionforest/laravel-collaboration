@@ -60,20 +60,14 @@ Both packages share one engine. filament-collaboration is built on this package,
 
 ## Installation
 
-The repository is private for now, so first tell Composer where it is, in your app's `composer.json`:
-
-```json
-"repositories": [
-    { "type": "vcs", "url": "git@github.com:solutionforest/laravel-collaboration.git" }
-]
-```
-
-Then install it, and let the installer set it up:
+Install it, and let the installer set it up:
 
 ```bash
 composer require solutionforest/laravel-collaboration
 php artisan collaboration:install
 ```
+
+<sub>Until the package is listed on Packagist, add the repository to your app's `composer.json` first: `"repositories": [{ "type": "vcs", "url": "https://github.com/solutionforest/laravel-collaboration" }]`.</sub>
 
 The installer publishes the config, creates the tables, installs the browser side for an Inertia app, and prints the next steps for your stack.
 
@@ -616,6 +610,10 @@ cd demo && php artisan migrate:fresh --seed && php artisan serve --port=8123 &
 node tests/browser/smoke.mjs    # three real browsers, one per stack
 node tests/browser/media.mjs    # re-records the screenshots and video in docs/media
 ```
+
+## Changelog and security
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release. To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## License
 
