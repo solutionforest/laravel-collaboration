@@ -33,8 +33,8 @@ const packages = [
                 <h3>{{ item.name }} <span v-if="item.key === current" class="home-family-here">You are here</span></h3>
                 <p>{{ item.text }}</p>
                 <div class="home-family-links vp-raw">
-                    <a v-if="item.key !== current" :href="item.site" target="_self">Documentation →</a>
-                    <a :href="item.repo">GitHub →</a>
+                    <a v-if="item.key !== current" :href="item.site" target="_blank" rel="noopener noreferrer">Documentation →</a>
+                    <a :href="item.repo" target="_blank" rel="noopener noreferrer">GitHub →</a>
                 </div>
             </div>
         </div>

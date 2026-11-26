@@ -24,12 +24,12 @@ for (const file of files) {
         else if (!ids.get(target).has(decodeURIComponent(anchor))) broken.push(`${file}: ${href} (no such anchor)`)
     }
 
-    // Same-origin links to another GitHub Pages site must have `target` so VitePress's SPA router does not hijack them.
+    // Same-origin links to another GitHub Pages site must open in a new tab so VitePress's SPA router never hijacks them.
     for (const [tag, href] of html.matchAll(/<a\b[^>]*href="(https:\/\/solutionforest\.github\.io\/[^"]*)"[^>]*>/g)) {
         const pathname = new URL(href).pathname
 
-        if (!pathname.startsWith(base) && !/\btarget=/.test(tag)) {
-            broken.push(`${file}: ${href} (cross-site same-origin link missing target attribute)`)
+        if (!pathname.startsWith(base) && !/\btarget="_blank"/.test(tag)) {
+            broken.push(`${file}: ${href} (cross-site same-origin link must use target="_blank")`)
         }
     }
 }

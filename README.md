@@ -2,7 +2,14 @@
 
 [![Laravel Collaboration: Google Docs-style editing for Laravel](website/public/covers/default.png)](https://solutionforest.github.io/laravel-collaboration/)
 
-[![Latest version](https://img.shields.io/packagist/v/solutionforest/laravel-collaboration.svg)](https://packagist.org/packages/solutionforest/laravel-collaboration) [![Tests](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml) [![License](https://img.shields.io/packagist/l/solutionforest/laravel-collaboration.svg)](LICENSE)
+[![Latest version](https://img.shields.io/packagist/v/solutionforest/laravel-collaboration.svg)](https://packagist.org/packages/solutionforest/laravel-collaboration)
+[![Tests](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/tests.yml)
+[![Docs](https://github.com/solutionforest/laravel-collaboration/actions/workflows/docs.yml/badge.svg)](https://github.com/solutionforest/laravel-collaboration/actions/workflows/docs.yml)
+![PHP 8.3 | 8.4](https://img.shields.io/badge/PHP-8.3%20%7C%208.4-777bb4?logo=php&logoColor=white)
+![Laravel 12 | 13](https://img.shields.io/badge/Laravel-12%20%7C%2013-ff2d20?logo=laravel&logoColor=white)
+![Livewire 4 | Inertia 3](https://img.shields.io/badge/Livewire%204%20%7C%20Inertia%203-f59e0b)
+![PHPStan level 10](https://img.shields.io/badge/PHPStan-level%2010-2a5ea7)
+[![License MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 > Using Filament? **[Filament Collaboration](https://solutionforest.github.io/filament-collaboration/)** is built on this package and makes every field of a Filament panel live.
 
