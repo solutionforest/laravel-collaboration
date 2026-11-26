@@ -309,6 +309,8 @@ bindTextField(room, 'title', document.querySelector('#title'))
 $post->collaboration()->update($validated);
 ```
 
+**When somebody else saves**, every open form hears it ("Bob saved"). Live fields already show everybody's edits. Other fields take the saved values if this person hasn't changed them. Livewire, React and Vue all do this for you.
+
 When saving is more than an update, use `save()` with a closure. It receives the merged values:
 
 ```php

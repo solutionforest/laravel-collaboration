@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/vue3'
 import { computed, defineComponent, h, onBeforeUnmount, onScopeDispose, ref, shallowRef, unref, watch } from 'vue'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { FormMemory } from '../core/form-memory.js'
 import { Room } from '../core/room.js'
 import { describe, translate } from '../ui/avatars.js'
 import { avatarsOf, peopleIn } from '../ui/people.js'
@@ -86,12 +87,51 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     onScopeDispose(() => stop?.())
 
-    // Every save carries the edits the server has not seen yet, after the app's own transform.
-    form.transform((values) => ({ ...transform(values), [config()?.input ?? '_collaboration']: room.value?.payload() ?? '' }))
+    // What each field held when the form loaded or was last saved, to tell this person's changes from others'.
+    const memory = room.value ? new FormMemory(room.value, form.data()) : null
+    const conflicts = ref(/** @type {import('../core/form-memory.js').Conflict[]} */ ([]))
+
+    // Somebody else saved: their values go into the fields this person left alone.
+    const stopSaved = room.value?.on('saved', async ({ name }) => {
+        const { take, conflicts: found } = (await memory?.pull(form.data(), name)) ?? { take: {}, conflicts: [] }
+
+        Object.assign(form, take)
+        conflicts.value = [...found]
+    })
+
+    onScopeDispose(() => stopSaved?.())
+
+    // This person saved: what the form holds is the new base.
+    watch(() => form.wasSuccessful, (successful) => {
+        if (!successful) return
+
+        memory?.saved(form.data())
+        conflicts.value = []
+    })
+
+    // Every save carries the edits the server has not seen yet, and the form's base, after the app's own transform.
+    form.transform((values) => ({
+        ...transform(values),
+        [config()?.input ?? '_collaboration']: room.value?.payload() ?? '',
+        [`${config()?.input ?? '_collaboration'}_base`]: memory?.payload() ?? '',
+    }))
 
     // Under one key, so nothing collides with the form's own fields.
     return Object.assign(form, {
-        collaboration,
+        collaboration: {
+            ...collaboration,
+            conflicts,
+            /** Settle a field somebody else saved too: keep this person's value. */
+            keepMine: (/** @type {string} */ name) => {
+                memory?.keepMine(name)
+                conflicts.value = [...(memory?.conflicts ?? [])]
+            },
+            /** Or take theirs. */
+            useTheirs: (/** @type {string} */ name) => {
+                form[name] = memory?.useTheirs(name)
+                conflicts.value = [...(memory?.conflicts ?? [])]
+            },
+        },
         /** What `v-collaborate` binds: `v-collaborate="form.field('title')"`. */
         field: (/** @type {keyof TForm & string} */ name) => ({ form, name }),
         /** Keeps an app's own `transform()`; the live edits are added after it. */

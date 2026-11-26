@@ -258,6 +258,7 @@ final class Room implements Arrayable, JsonSerializable
         return [
             'id' => substr($context->room, 0, 16).'-'.$context->client,
             'url' => route('collaboration.sync'),
+            'endpoints' => self::endpoints(),
             'csrf' => csrf_token(),
             'token' => $context->toToken(),
             'client' => $context->client,
@@ -572,6 +573,25 @@ final class Room implements Arrayable, JsonSerializable
         }
 
         return $labels;
+    }
+
+    /**
+     * Where the page asks about its room besides syncing. An integration
+     * that registers its own routes keeps the names.
+     *
+     * @return array<string, string>
+     */
+    private static function endpoints(): array
+    {
+        $endpoints = [];
+
+        foreach (['values'] as $name) {
+            if (app('router')->has("collaboration.{$name}")) {
+                $endpoints[$name] = route("collaboration.{$name}");
+            }
+        }
+
+        return $endpoints;
     }
 
     private function isEditing(): bool

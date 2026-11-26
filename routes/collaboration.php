@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use SolutionForest\Collaboration\Collaboration;
 use SolutionForest\Collaboration\Http\Controllers\ScriptController;
 use SolutionForest\Collaboration\Http\Controllers\SyncController;
+use SolutionForest\Collaboration\Http\Controllers\ValuesController;
 use SolutionForest\Collaboration\Http\Middleware\KeepSessionReadOnly;
 use SolutionForest\Collaboration\Support\Data;
 
@@ -17,3 +18,8 @@ Route::post($path.'/sync', SyncController::class)
     ->name('collaboration.sync');
 
 Route::get($path.'/livewire.js', ScriptController::class)->name('collaboration.livewire');
+
+// What a page asks about its room besides syncing. Each request carries the room's token.
+Route::middleware([...$middleware, 'throttle:collaboration'])->prefix($path)->name('collaboration.')->group(function (): void {
+    Route::post('values', ValuesController::class)->name('values');
+});

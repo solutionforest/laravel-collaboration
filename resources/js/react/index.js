@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react'
 import { createElement, useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react'
 import { isTextInput, lockWhileEditing } from '../bindings/lock.js'
 import { bindTextField } from '../bindings/text-field.js'
+import { FormMemory } from '../core/form-memory.js'
 import { Room } from '../core/room.js'
 import { avatarsOf, peopleIn, valueOf } from '../ui/people.js'
 import { describe, translate } from '../ui/avatars.js'
@@ -98,8 +99,47 @@ export function useCollaborativeForm(config, data, options = {}) {
         return () => fields.current.forEach((binding) => binding.unbind())
     }, [room])
 
-    // Every save carries the edits the server has not seen yet, after the app's own transform.
-    form.transform((values) => ({ ...transform.current(values), [config?.input ?? '_collaboration']: room?.payload() ?? '' }))
+    // What each field held when the form loaded or was last saved, to tell this person's changes from others'.
+    const memory = useMemo(() => (room ? new FormMemory(room, latest.current.data) : null), [room])
+    const [conflicts, setConflicts] = useState(/** @type {import('../core/form-memory.js').Conflict[]} */ ([]))
+
+    // Somebody else saved: their values go into the fields this person left alone.
+    useEffect(() => room?.on('saved', async ({ name }) => {
+        const { take, conflicts: found } = (await memory?.pull(latest.current.data, name)) ?? { take: {}, conflicts: [] }
+
+        if (Object.keys(take).length) latest.current.setData((values) => ({ ...values, ...take }))
+
+        setConflicts([...found])
+    }), [room, memory])
+
+    // This person saved: what the form holds is the new base.
+    useEffect(() => {
+        if (!form.wasSuccessful) return
+
+        memory?.saved(latest.current.data)
+        setConflicts([])
+    }, [form.wasSuccessful, memory])
+
+    // Every save carries the edits the server has not seen yet, and the form's base, after the app's own transform.
+    form.transform((values) => ({
+        ...transform.current(values),
+        [config?.input ?? '_collaboration']: room?.payload() ?? '',
+        [`${config?.input ?? '_collaboration'}_base`]: memory?.payload() ?? '',
+    }))
+
+    /** Settle a field somebody else saved too: keep this person's value, or take theirs. */
+    const resolve = {
+        keepMine: (/** @type {string} */ name) => {
+            memory?.keepMine(name)
+            setConflicts([...(memory?.conflicts ?? [])])
+        },
+        useTheirs: (/** @type {string} */ name) => {
+            const theirs = memory?.useTheirs(name)
+
+            latest.current.setData(name, theirs)
+            setConflicts([...(memory?.conflicts ?? [])])
+        },
+    }
 
     /**
      * Props for an `<input>`, `<textarea>`, `<select>` or checkbox. For a
@@ -136,7 +176,7 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     return Object.assign(form, {
         field,
-        collaboration,
+        collaboration: { ...collaboration, conflicts, ...resolve },
         /** Keeps an app's own `transform()`; the live edits are added after it. */
         transform: (/** @type {(values: TForm) => Record<string, any>} */ callback) => {
             transform.current = callback

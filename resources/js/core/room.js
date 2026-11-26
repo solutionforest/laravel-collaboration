@@ -235,6 +235,22 @@ export class Room {
     }
 
     /**
+     * Asks the server something about this room, such as its comments:
+     * `room.call('comments')`. The room's token goes with it.
+     *
+     * @param {string} endpoint a name from `config.endpoints`
+     * @param {Record<string, unknown>} [payload]
+     * @returns {Promise<any>}
+     */
+    call(endpoint, payload = {}) {
+        const url = this.config.endpoints?.[endpoint]
+
+        if (!url) return Promise.reject(new Error(`[collaboration] This room has no "${endpoint}" endpoint.`))
+
+        return this.transport.send({ url, csrf: this.config.csrf }, { ...payload, token: this.config.token })
+    }
+
+    /**
      * What a form sends when it is saved, so the save includes edits the
      * server has not seen yet. `Room::save()` reads it.
      */

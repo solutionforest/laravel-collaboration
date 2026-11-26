@@ -34,7 +34,12 @@ class LivewireRoom {
         this.room.on('status', () => (this.render(), this.publish()))
         this.room.on('change', () => this.publish())
         this.room.on('expired', () => this.wire.$refresh())
-        this.room.on('saved', ({ name }) => this.notice(translate(config.strings.saved ?? ':name saved', { name: name ?? '' })))
+        this.room.on('saved', ({ name }) => {
+            this.notice(translate(config.strings.saved ?? ':name saved', { name: name ?? '' }))
+
+            // Their values, into the fields this person left alone.
+            this.wire.call('pullCollaboration')
+        })
 
         this.events = new AbortController()
 
