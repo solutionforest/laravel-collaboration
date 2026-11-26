@@ -6,6 +6,7 @@ namespace SolutionForest\Collaboration\Livewire;
 
 use Closure;
 use Livewire\Attributes\Locked;
+use SolutionForest\Collaboration\Exceptions\SaveConflict;
 use SolutionForest\Collaboration\Room;
 
 /**
@@ -41,6 +42,15 @@ trait WithCollaboration
     #[Locked]
     public array $collaborationBase = [];
 
+    /**
+     * Fields somebody else saved while this person changed them too: their
+     * value and name, until this person chooses. `<x-collaboration::conflicts>` shows them.
+     *
+     * @var array<string, array{theirs: mixed, name: string}>
+     */
+    #[Locked]
+    public array $collaborationConflicts = [];
+
     abstract public function room(): Room;
 
     /** The room as this tab renders it. */
@@ -57,9 +67,13 @@ trait WithCollaboration
     }
 
     /**
-     * Saves the component's values for the room's fields, with everybody's
-     * latest edits in the live ones. Updates the record, unless you pass
-     * what to do with the values instead.
+     * Saves the component's values for the room's fields and the record's
+     * other fields, with everybody's latest edits in the live ones. Updates
+     * the record, unless you pass what to do with the values instead.
+     *
+     * A field somebody else saved while this person changed it too stops
+     * the save, with a message on the field; `keepMyVersion()` or
+     * `useTheirVersion()` settles it.
      *
      * @param  (Closure(array<string, mixed>): mixed)|null  $persist
      * @param  string|null  $statePath  where the fields are, such as `form` for a Livewire form object
@@ -69,13 +83,52 @@ trait WithCollaboration
         $room = $this->collaborationRoom();
         $values = [];
 
-        foreach (array_keys($room->sharedFields()) as $field) {
+        foreach ([...array_keys($room->sharedFields()), ...array_keys($this->collaborationBase)] as $field) {
             $values[$field] = data_get($this, $statePath === null ? $field : "{$statePath}.{$field}");
         }
 
-        return $persist === null
-            ? $room->update($values, $this->collaborationSync)
-            : $room->save($values, $persist, $this->collaborationSync);
+        try {
+            $result = $persist === null
+                ? $room->update($values, $this->collaborationSync, $this->collaborationBase)
+                : $room->save($values, $persist, $this->collaborationSync, $this->collaborationBase);
+        } catch (SaveConflict $conflict) {
+            foreach ($conflict->theirs as $field => $theirs) {
+                $this->collaborationConflicts[$field] = ['theirs' => $theirs, 'name' => $conflict->name];
+            }
+
+            throw $conflict;
+        }
+
+        // Saved: what the fields hold now is the new base.
+        $this->collaborationConflicts = [];
+        $this->collaborationBase = array_merge($this->collaborationBase, array_intersect_key($values, $this->collaborationBase));
+
+        return $result;
+    }
+
+    /** Keep this person's value of a conflicting field: saving again overwrites theirs. */
+    public function keepMyVersion(string $field): void
+    {
+        $conflict = $this->collaborationConflicts[$field] ?? null;
+
+        if ($conflict !== null) {
+            $this->collaborationBase[$field] = $conflict['theirs'];
+            unset($this->collaborationConflicts[$field]);
+            $this->resetErrorBag($field);
+        }
+    }
+
+    /** Take the other person's value of a conflicting field instead. */
+    public function useTheirVersion(string $field): void
+    {
+        $conflict = $this->collaborationConflicts[$field] ?? null;
+
+        if ($conflict !== null) {
+            $this->{$field} = $conflict['theirs'];
+            $this->collaborationBase[$field] = $conflict['theirs'];
+            unset($this->collaborationConflicts[$field]);
+            $this->resetErrorBag($field);
+        }
     }
 
     /**

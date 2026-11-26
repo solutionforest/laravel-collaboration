@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 return [
     'someone' => 'Someone',
+    'conflict' => ':name also changed :field. Choose which version to keep, then save again.',
+    'keep_mine' => 'Keep mine',
+    'use_theirs' => 'Use the version from :name',
 
     'modes' => [
         'browsing' => 'Browsing',
@@ -27,6 +30,9 @@ return [
         'idle' => 'Away',
         'in_field' => 'In :field',
         'locked_field' => ':name is editing this field',
+        'conflict' => ':name also changed :field. Choose which version to keep, then save again.',
+        'keep_mine' => 'Keep mine',
+        'use_theirs' => 'Use the version from :name',
         'more' => ':count more',
     ],
 ];

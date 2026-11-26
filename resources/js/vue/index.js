@@ -101,6 +101,13 @@ export function useCollaborativeForm(config, data, options = {}) {
 
     onScopeDispose(() => stopSaved?.())
 
+    // A save refused, perhaps because somebody else saved these fields: find out which.
+    watch(() => form.hasErrors, (hasErrors) => {
+        if (!hasErrors || !memory) return
+
+        memory.pull(form.data(), memory.conflicts[0]?.name ?? null).then(({ conflicts: found }) => (conflicts.value = [...found])).catch(() => {})
+    })
+
     // This person saved: what the form holds is the new base.
     watch(() => form.wasSuccessful, (successful) => {
         if (!successful) return
@@ -277,6 +284,36 @@ export const Status = defineComponent({
             const { status } = collaborationOf(props)
 
             return h('span', { 'data-status': status }, notice.value ?? strings.value[status] ?? '')
+        }
+    },
+})
+
+/** Fields somebody else saved while this person changed them too: `<Conflicts :form="form" />`. */
+export const Conflicts = defineComponent({
+    name: 'CollaborationConflicts',
+    props: { form: { type: Object, required: true } },
+    setup(props) {
+        addStyles()
+
+        return () => {
+            const { conflicts, keepMine, useTheirs, room } = props.form.collaboration
+            const strings = unref(room)?.config.strings ?? {}
+            const labels = unref(room)?.config.labels ?? {}
+            const list = unref(conflicts) ?? []
+
+            if (!list.length) return null
+
+            return h('div', { class: 'collab-conflicts', role: 'alert' }, list.map((conflict) => {
+                const name = conflict.name ?? strings.someone ?? 'Someone'
+                const theirs = conflict.theirs === null || conflict.theirs === undefined ? '' : typeof conflict.theirs === 'object' ? JSON.stringify(conflict.theirs) : String(conflict.theirs)
+
+                return h('div', { key: conflict.field, class: 'collab-conflict' }, [
+                    h('p', translate(strings.conflict ?? ':name also changed :field.', { name, field: labels[conflict.field] ?? conflict.field })),
+                    h('p', { class: 'collab-conflict-theirs' }, theirs),
+                    h('button', { type: 'button', onClick: () => keepMine(conflict.field) }, strings.keep_mine ?? 'Keep mine'),
+                    h('button', { type: 'button', onClick: () => useTheirs(conflict.field) }, translate(strings.use_theirs ?? 'Use theirs', { name })),
+                ])
+            }))
         }
     },
 })

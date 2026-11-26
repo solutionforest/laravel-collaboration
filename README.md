@@ -311,6 +311,8 @@ $post->collaboration()->update($validated);
 
 **When somebody else saves**, every open form hears it ("Bob saved"). Live fields already show everybody's edits. Other fields take the saved values if this person hasn't changed them. Livewire, React and Vue all do this for you.
 
+**When two people change the same field**, outside the live fields, the second save stops with a message on the field: *"Bob also changed Category. Choose which version to keep, then save again."* Show the choice with `<Conflicts form={form} />` (React), `<Conflicts :form="form" />` (Vue) or `<x-collaboration::conflicts :conflicts="$collaborationConflicts" />` (Livewire). A field only one of them changed keeps that change: a stale form never overwrites what somebody else saved.
+
 When saving is more than an update, use `save()` with a closure. It receives the merged values:
 
 ```php

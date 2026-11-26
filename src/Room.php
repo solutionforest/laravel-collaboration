@@ -19,13 +19,16 @@ use SolutionForest\Collaboration\Documents\EditTrail;
 use SolutionForest\Collaboration\Documents\SharedField;
 use SolutionForest\Collaboration\Enums\FieldKind;
 use SolutionForest\Collaboration\Enums\PresenceMode;
+use SolutionForest\Collaboration\Exceptions\SaveConflict;
 use SolutionForest\Collaboration\Exceptions\UnknownFieldKind;
+use SolutionForest\Collaboration\Merge\ThreeWayMerge;
 use SolutionForest\Collaboration\Presence\Identity;
 use SolutionForest\Collaboration\Rooms\RoomAuthorizer;
 use SolutionForest\Collaboration\Rooms\RoomContext;
 use SolutionForest\Collaboration\Rooms\RoomResolver;
 use SolutionForest\Collaboration\Saving\LiveSave;
 use SolutionForest\Collaboration\Support\Data;
+use SolutionForest\Collaboration\Support\Database;
 use SolutionForest\Collaboration\Support\ModelFields;
 use SolutionForest\Collaboration\Support\SaveLock;
 
@@ -45,6 +48,9 @@ final class Room implements Arrayable, JsonSerializable
 {
     /** The name of the input a form sends its live edits in when it is saved. */
     public const INPUT = '_collaboration';
+
+    /** And what its other fields held when it loaded or was last saved. */
+    public const BASE = '_collaboration_base';
 
     /** @var array<string, FieldKind> */
     private array $fields = [];
@@ -294,13 +300,17 @@ final class Room implements Arrayable, JsonSerializable
      * @param  array<string, mixed>  $values  what the form submitted
      * @param  Closure(array<string, mixed>): TResult  $persist  writes the values to the database
      * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
+     * @param  array<string, mixed>|null  $base  what the form's other fields held when it loaded; read from the request when null
      * @return TResult
+     *
+     * @throws SaveConflict when somebody else saved a field this person changed too
      */
-    public function save(array $values, Closure $persist, ?string $sync = null): mixed
+    public function save(array $values, Closure $persist, ?string $sync = null, ?array $base = null): mixed
     {
         $sync ??= Data::string(request()->input(self::INPUT));
+        $base ??= Data::decode(request()->input(self::BASE));
 
-        return app(SaveLock::class)->block($this->id(), function () use ($values, $persist, $sync): mixed {
+        return app(SaveLock::class)->block($this->id(), function () use ($values, $persist, $sync, $base): mixed {
             $documents = app(DocumentRepository::class);
             $context = $this->contextFromSync($sync);
             $live = new LiveSave;
@@ -310,6 +320,7 @@ final class Room implements Arrayable, JsonSerializable
                 $live = LiveSave::prepare($documents, $context->draft(), $context->client, $sync, $context->fields, $context->allowed, $context->currentUser());
             }
 
+            $values = $this->mergeOtherFields($values, $base, $live->fields);
             $mine = $this->toShared($values);
             $published = $live->valuesToPublish($mine, $this->currentValues());
             $result = $persist([...$values, ...$this->fromShared($published)]);
@@ -334,9 +345,63 @@ final class Room implements Arrayable, JsonSerializable
      * @param  array<string, mixed>  $values  what the form submitted
      * @param  string|null  $sync  the form's `_collaboration` input; read from the request when null
      */
-    public function update(array $values, ?string $sync = null): bool
+    public function update(array $values, ?string $sync = null, ?array $base = null): bool
     {
-        return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync);
+        return $this->save($values, fn (array $merged): bool => $this->record->update($merged), $sync, $base);
+    }
+
+    /**
+     * Fields that are not live, merged three ways against what the form
+     * loaded: one this person left alone keeps what somebody else saved
+     * meanwhile, and one both changed stops the save until they choose.
+     *
+     * @param  array<string, mixed>  $values
+     * @param  array<string, mixed>  $base
+     * @param  list<string>  $live
+     * @return array<string, mixed>
+     *
+     * @throws SaveConflict
+     */
+    private function mergeOtherFields(array $values, array $base, array $live): array
+    {
+        if ($base === [] || ! $this->record->exists) {
+            return $values;
+        }
+
+        $saved = $this->record->fresh()?->toArray() ?? [];
+        $conflicts = [];
+
+        foreach ($values as $field => $mine) {
+            if (in_array($field, $live, true) || ! array_key_exists($field, $base) || ! array_key_exists($field, $saved)) {
+                continue;
+            }
+
+            $theirs = $saved[$field];
+
+            if (ThreeWayMerge::same($theirs, $base[$field])) {
+                continue;
+            }
+
+            if (ThreeWayMerge::same($mine, $base[$field])) {
+                $values[$field] = $this->record->getAttribute($field);
+            } elseif (! ThreeWayMerge::same($mine, $theirs)) {
+                $conflicts[$field] = $theirs;
+            }
+        }
+
+        if ($conflicts !== []) {
+            throw SaveConflict::on($conflicts, $this->resolvedLabels(), $this->lastSavedBy());
+        }
+
+        return $values;
+    }
+
+    /** Who saved the record last, through its room. */
+    private function lastSavedBy(): string
+    {
+        $savedBy = Data::decode(Database::table('documents')->where('room', $this->draft())->value('saved_by'));
+
+        return Data::nullableString($savedBy['name'] ?? null) ?? Data::string(__('collaboration::collaboration.someone'));
     }
 
     /**

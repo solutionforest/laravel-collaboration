@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'conflict' => ':name 亦修改了 :field。請選擇要保留的版本，然後再儲存。',
+    'keep_mine' => '保留我的版本',
+    'use_theirs' => '使用 :name 的版本',
     'someone' => '某位同事',
     'busy' => '有同事正在儲存此記錄，請稍後再試。',
     'foreign_upload' => '有圖片尚待上載者儲存，請先由該同事儲存。',
@@ -88,6 +91,9 @@ return [
     ],
 
     'client' => [
+        'conflict' => ':name 亦修改了 :field。請選擇要保留的版本，然後再儲存。',
+        'keep_mine' => '保留我的版本',
+        'use_theirs' => '使用 :name 的版本',
         'connecting' => '連線中…',
         'synced' => '所有修改已共享',
         'syncing' => '共享中…',

@@ -2,6 +2,8 @@
 export interface RoomConfig {
     id: string
     url: string
+    /** Where the page asks about its room besides syncing: comments, versions, values, uploads. */
+    endpoints: Record<string, string>
     csrf: string
     token: string
     client: number
@@ -96,6 +98,8 @@ export class Room {
     peopleIn(field: string): Person[]
     /** Who holds a locked field right now, if somebody else does. */
     lockedBy(field: string): Person | null
+    /** Asks the server something about this room, such as `room.call('comments')`. */
+    call<T = any>(endpoint: string, payload?: Record<string, unknown>): Promise<T>
     /** What a form sends when it is saved; `Room::save()` reads it. */
     payload(): string
     on<E extends keyof RoomEvents>(event: E, callback: (detail: RoomEvents[E]) => void): () => void
@@ -145,3 +149,22 @@ export function avatarsOf(people: Person[], limit?: number): { shown: Person[], 
 
 /** An input's change event as a form value; anything else as it is. */
 export function valueOf(event: unknown): unknown
+
+/** A field somebody else saved while this person changed it too. */
+export interface Conflict {
+    field: string
+    mine: unknown
+    theirs: unknown
+    name: string | null
+}
+
+/** What a form's other fields held when it loaded or was last saved. */
+export class FormMemory {
+    constructor(room: Room, values: Record<string, unknown>)
+    readonly conflicts: Conflict[]
+    saved(values: Record<string, unknown>): void
+    pull(current: Record<string, unknown>, name?: string | null): Promise<{ take: Record<string, unknown>, conflicts: Conflict[] }>
+    keepMine(field: string): void
+    useTheirs(field: string): unknown
+    payload(): string
+}

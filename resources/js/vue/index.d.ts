@@ -1,6 +1,6 @@
 import type { InertiaForm } from '@inertiajs/vue3'
 import type { DefineComponent, Directive, Ref, ShallowRef } from 'vue'
-import type { Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -33,6 +33,9 @@ export type CollaborativeForm<TForm extends Record<string, any>> = InertiaForm<T
         status: RoomStatus
         peopleIn(field: string): Person[]
         isLive(field: string): boolean
+        conflicts: Conflict[]
+        keepMine(field: string): void
+        useTheirs(field: string): void
     }
 }
 
@@ -48,3 +51,4 @@ type PresenceProps = { form?: { collaboration: unknown }, collaboration?: Collab
 export const Avatars: DefineComponent<PresenceProps & { limit?: number }>
 export const FieldPeople: DefineComponent<PresenceProps & { field: string }>
 export const Status: DefineComponent<PresenceProps>
+export const Conflicts: DefineComponent<{ form: { collaboration: unknown } }>

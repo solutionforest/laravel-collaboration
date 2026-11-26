@@ -11,6 +11,11 @@ const CSS = `
 .collab-avatar[data-idle] { opacity: .45; }
 .collab-field-people { display: inline-flex; gap: 4px; }
 .collab-field-person { padding: 1px 6px; border-radius: 9999px; color: #fff; font: 600 11px/1.5 system-ui, sans-serif; }
+.collab-conflicts { display: grid; gap: 8px; }
+.collab-conflict { padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 8px; background: #fffbeb; font: 14px/1.5 system-ui, sans-serif; color: #78350f; }
+.collab-conflict p { margin: 0 0 6px; }
+.collab-conflict-theirs { padding: 4px 8px; border-radius: 4px; background: #fff; white-space: pre-wrap; }
+.collab-conflict button { margin-right: 6px; padding: 3px 10px; border: 1px solid #d97706; border-radius: 6px; background: #fff; color: #92400e; font: 600 13px system-ui, sans-serif; cursor: pointer; }
 [data-collab-busy] { outline: 2px solid var(--collab-color); outline-offset: 1px; }
 .ProseMirror .collab-pm-caret { position: relative; margin: 0 -1px; border-left: 2px solid; word-break: normal; pointer-events: none; }
 .ProseMirror .collab-pm-caret > span { position: absolute; bottom: 100%; left: -2px; padding: 1px 5px; border-radius: 4px 4px 4px 0; color: #fff; font: 600 11px/1.4 system-ui, sans-serif; white-space: nowrap; user-select: none; }

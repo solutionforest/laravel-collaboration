@@ -112,6 +112,13 @@ export function useCollaborativeForm(config, data, options = {}) {
         setConflicts([...found])
     }), [room, memory])
 
+    // A save refused, perhaps because somebody else saved these fields: find out which.
+    useEffect(() => {
+        if (!form.hasErrors || !memory) return
+
+        memory.pull(latest.current.data, memory.conflicts[0]?.name ?? null).then(({ conflicts: found }) => setConflicts([...found])).catch(() => {})
+    }, [form.hasErrors, memory])
+
     // This person saved: what the form holds is the new base.
     useEffect(() => {
         if (!form.wasSuccessful) return
@@ -338,6 +345,38 @@ export function Status({ form, collaboration = form?.collaboration, className = 
 
     return createElement('span', { className, 'data-status': status }, notice ?? strings[status] ?? '')
 }
+
+/**
+ * Fields somebody else saved while this person changed them too, with a
+ * choice for each: keep mine, or use theirs.
+ *
+ *     <Conflicts form={form} />
+ *
+ * @param {{form: {collaboration: Collaboration & {conflicts: import('../core/form-memory.js').Conflict[], keepMine: (field: string) => void, useTheirs: (field: string) => void}}, className?: string}} props
+ */
+export function Conflicts({ form, className = '' }) {
+    useInsertionEffect(addStyles, [])
+
+    const { conflicts, keepMine, useTheirs, room } = form.collaboration
+    const strings = room?.config.strings ?? {}
+    const labels = room?.config.labels ?? {}
+
+    if (!conflicts.length) return null
+
+    return createElement('div', { className: `collab-conflicts ${className}`.trim(), role: 'alert' }, ...conflicts.map((conflict) => {
+        const name = conflict.name ?? strings.someone ?? 'Someone'
+
+        return createElement('div', { key: conflict.field, className: 'collab-conflict' },
+            createElement('p', null, translate(strings.conflict ?? ':name also changed :field.', { name, field: labels[conflict.field] ?? conflict.field })),
+            createElement('p', { className: 'collab-conflict-theirs' }, shown(conflict.theirs)),
+            createElement('button', { type: 'button', onClick: () => keepMine(conflict.field) }, strings.keep_mine ?? 'Keep mine'),
+            createElement('button', { type: 'button', onClick: () => useTheirs(conflict.field) }, translate(strings.use_theirs ?? 'Use theirs', { name })),
+        )
+    }))
+}
+
+/** A value as a person reads it. */
+const shown = (/** @type {unknown} */ value) => (value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value))
 
 /**
  * @param {Room} room

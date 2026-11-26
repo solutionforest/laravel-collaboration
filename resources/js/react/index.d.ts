@@ -1,6 +1,6 @@
 import type { InertiaFormProps } from '@inertiajs/react'
 import type { ReactElement } from 'react'
-import type { Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
+import type { Conflict, Person, Room, RoomConfig, RoomStatus } from '../types/index.js'
 
 export type { Person, Room, RoomConfig, RoomStatus }
 
@@ -31,10 +31,17 @@ export interface FieldProps {
     checked?: boolean
 }
 
+/** `form.collaboration`: the room, and the fields somebody else saved while you changed them too. */
+export interface FormCollaboration extends Collaboration {
+    conflicts: Conflict[]
+    keepMine(field: string): void
+    useTheirs(field: string): void
+}
+
 export type CollaborativeForm<TForm extends Record<string, any>> = InertiaFormProps<TForm> & {
     /** Props for the field's input. For a radio, or a checkbox in a group, pass the value it stands for. */
     field(name: keyof TForm & string, options?: { value?: string | number }): FieldProps
-    collaboration: Collaboration
+    collaboration: FormCollaboration
 }
 
 export function useCollaboration(config: RoomConfig | null, options?: CollaborationOptions): Collaboration
@@ -54,3 +61,6 @@ export function FieldPeople<TForm extends Record<string, any>>(props: { form: Co
 export function FieldPeople(props: { collaboration: Collaboration, field: string, className?: string }): ReactElement
 
 export function Status(props: PresenceProps): ReactElement
+
+/** Fields somebody else saved while you changed them too, with "Keep mine" and "Use theirs". */
+export function Conflicts(props: { form: { collaboration: FormCollaboration }, className?: string }): ReactElement | null
