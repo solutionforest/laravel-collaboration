@@ -28,7 +28,7 @@ final class SaveConflict extends ValidationException
         $messages = [];
 
         foreach (array_keys($theirs) as $field) {
-            $messages[$field] = (string) __('collaboration::collaboration.conflict', ['name' => $name, 'field' => $labels[$field] ?? $field]);
+            $messages[$field] = (string) __('collaboration::collaboration.conflict', ['name' => $name, 'field' => $labels[$field] ?? str((string) $field)->headline()->toString()]);
         }
 
         $exception = self::withMessages($messages);

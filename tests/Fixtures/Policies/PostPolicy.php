@@ -18,4 +18,9 @@ final class PostPolicy
     {
         return $user->name !== 'Viewer';
     }
+
+    public function create(User $user): bool
+    {
+        return $user->name !== 'Viewer';
+    }
 }

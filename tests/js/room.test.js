@@ -279,3 +279,51 @@ test('a field the room does not have is reported once, as a likely typo', async 
     assert.equal(warnings.length, 1)
     assert.match(warnings[0], /"titel" is not a field of this room/)
 })
+
+test('following a colleague brings the field they move to into view', async () => {
+    const fake = server()
+    const alice = await join(fake, 1, 'Alice')
+    const bob = await join(fake, 2, 'Bob')
+    const revealed = []
+
+    alice.bind('title', { reveal: () => revealed.push('title') })
+    await until(() => alice.people.length === 1)
+
+    alice.follow(2)
+    bob.focus('title')
+
+    await until(() => revealed.length === 1)
+    assert.equal(alice.following, 2)
+
+    alice.follow(2)
+    assert.equal(alice.following, null)
+})
+
+test('a repeater\'s item inputs share their typing, and a new item reaches everybody', async () => {
+    const { bindItems } = await import('../../resources/js/bindings/items.js')
+    const { listOps, toList } = await import('../../resources/js/core/items.js')
+    const fake = new FakeServer({ clock: 0, fields: { title: { k: 'text', r: [] }, lines: { k: 'items', t: ['title'], r: [], m: {} } } })
+
+    fake.seed('title', 'Hello')
+    fake.seed('lines', { a: { title: 'One' } })
+
+    const alice = await join(fake, 1, 'Alice')
+    const bob = await join(fake, 2, 'Bob')
+    const lists = []
+    const items = bindItems(alice, 'lines', { onValueChange: (list) => lists.push(list) })
+    const input = document.body.appendChild(document.createElement('input'))
+
+    await until(() => toList(alice.value('lines')).length === 1)
+    items.attach('a', 'title', input)
+    assert.equal(input.value, 'One')
+
+    input.value = 'One!'
+    input.setSelectionRange(4, 4)
+    input.dispatchEvent(new window.Event('input'))
+    await until(() => bob.value('lines')?.a?.title === 'One!')
+
+    items.change(listOps.add(toList(alice.value('lines')), { title: 'Two' }))
+    await until(() => toList(bob.value('lines')).length === 2)
+    assert.equal(toList(bob.value('lines'))[1].title, 'Two')
+    assert.ok(lists.length > 0)
+})

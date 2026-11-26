@@ -69,6 +69,9 @@ final class Room implements Arrayable, JsonSerializable
     /** @var array<string, list<string>> each list's sub-fields that merge by character */
     private array $texts = [];
 
+    /** @var array<string, list<string>> each list's other sub-fields */
+    private array $itemValues = [];
+
     private PresenceMode $mode = PresenceMode::Editing;
 
     private ?string $locale = null;
@@ -96,17 +99,21 @@ final class Room implements Arrayable, JsonSerializable
 
     /**
      * A repeater: a list of items people add, remove, reorder and edit
-     * together. Sub-fields named in `text` merge by character; the others
-     * take the latest change. Each item is saved with a `key`, so it keeps
-     * its identity from one save to the next.
+     * together. Sub-fields named in `text` merge by character; those in
+     * `values` take the latest change. Each item is saved with a `key`, so
+     * it keeps its identity from one save to the next.
      *
-     *     ->items('lines', text: ['description'])
+     *     ->items('lines', text: ['description'], values: ['quantity', 'price'])
+     *
+     * Sub-fields the items already have may be edited too.
      *
      * @param  list<string>  $text
+     * @param  list<string>  $values
      */
-    public function items(string $field, array $text = []): self
+    public function items(string $field, array $text = [], array $values = []): self
     {
         $this->texts[$field] = $text;
+        $this->itemValues[$field] = $values;
 
         return $this->add(FieldKind::Items, [$field]);
     }
@@ -631,6 +638,22 @@ final class Room implements Arrayable, JsonSerializable
     }
 
     /**
+     * The sub-fields of a list: those declared, and those its items have.
+     *
+     * @return list<string>
+     */
+    private function itemPaths(string $field): array
+    {
+        $paths = [...($this->texts[$field] ?? []), ...($this->itemValues[$field] ?? [])];
+
+        foreach (Items::byKey(data_get($this->record, $field)) as $item) {
+            array_push($paths, ...array_map(strval(...), array_keys($item)));
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
      * The values each picked field may take: what `value()` was given, or an enum cast's cases.
      *
      * @return array<string, list<string>>
@@ -640,6 +663,13 @@ final class Room implements Arrayable, JsonSerializable
         $allowed = $this->allowed;
 
         foreach ($this->fields as $field => $kind) {
+            // A list's sub-fields: the only paths an edit inside an item may name.
+            if ($kind === FieldKind::Items) {
+                $allowed[$field] = $this->itemPaths($field);
+
+                continue;
+            }
+
             $enum = $kind === FieldKind::Value ? ModelFields::enumOf($this->record, $field) : null;
 
             if (! isset($allowed[$field]) && $enum !== null) {

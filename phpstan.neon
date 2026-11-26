@@ -8,3 +8,6 @@ parameters:
         - routes
         - database
         - tests/Fixtures
+        - tests/Support
+        - tests/TestCase.php
+        - tests/FeaturesOff/TestCase.php
