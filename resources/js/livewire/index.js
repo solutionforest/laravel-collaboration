@@ -32,6 +32,7 @@ class LivewireRoom {
 
         this.room.on('ready', () => this.bind())
         this.room.on('people', () => this.render())
+        this.room.on('following', () => this.render())
         this.room.on('status', () => (this.render(), this.publish()))
         this.room.on('change', () => this.publish())
         this.room.on('expired', () => this.wire.$refresh())
@@ -122,7 +123,7 @@ class LivewireRoom {
         const status = this.el.querySelector('[data-collab-status]')
         const { strings, labels, avatarLimit } = this.room.config
 
-        presence?.replaceChildren(renderAvatars(this.room.people, { limit: avatarLimit, strings, labels }))
+        presence?.replaceChildren(renderAvatars(this.room.people, { limit: avatarLimit, strings, labels, following: this.room.following, onFollow: (client) => this.room.follow(client) }))
         presence?.setAttribute('title', this.room.people.map((person) => describe(person, strings, labels)).join('\n') || (strings.alone ?? ''))
 
         if (status && !this.noticeTimer) status.textContent = strings[this.room.status] ?? ''

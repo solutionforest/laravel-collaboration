@@ -11,6 +11,8 @@ export interface Collaboration {
     status: Ref<RoomStatus>
     peopleIn(field: string): Person[]
     isLive(field: string): boolean
+    following: Ref<number | null>
+    follow(client: number | null): void
 }
 
 export interface CollaborationOptions {
@@ -33,6 +35,8 @@ export type CollaborativeForm<TForm extends Record<string, any>> = InertiaForm<T
         status: RoomStatus
         peopleIn(field: string): Person[]
         isLive(field: string): boolean
+        following: number | null
+        follow(client: number | null): void
         conflicts: Conflict[]
         keepMine(field: string): void
         useTheirs(field: string): void

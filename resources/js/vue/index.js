@@ -24,6 +24,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
     const room = shallowRef(/** @type {Room | null} */ (null))
     const people = ref(/** @type {Person[]} */ ([]))
     const status = ref('connecting')
+    const following = ref(/** @type {number | null} */ (null))
     const initial = typeof window === 'undefined' ? null : config()
 
     // Joined during setup, so directives on the component's inputs find the room when they mount.
@@ -32,6 +33,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
 
         joined.on('people', (list) => (people.value = [...list]))
         joined.on('status', (value) => (status.value = value))
+        joined.on('following', (client) => (following.value = client))
         joined.on('expired', () => router.reload({ only: [prop], headers: { 'X-Collaboration-Client': String(joined.config.client) } }))
 
         room.value = joined
@@ -52,6 +54,9 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
         status,
         peopleIn: (/** @type {string} */ field) => peopleIn(people.value, field),
         isLive: (/** @type {string} */ field) => room.value?.isLiveField(field) ?? false,
+        following,
+        /** Follow a colleague from field to field; again, or null, to stop. */
+        follow: (/** @type {number | null} */ client) => room.value?.follow(client),
     }
 }
 
@@ -179,7 +184,8 @@ function connect(element, binding) {
     const field = binding.arg ?? binding.value?.name ?? ''
     const room = /** @type {Room | null} */ (unref(form?.collaboration?.room) ?? null)
 
-    if (!room || !field || bound.has(element)) return
+    // A form field outside the room is an ordinary input.
+    if (!room || !field || bound.has(element) || !(field in room.config.fields || field in (room.config.labels ?? {}))) return
 
     bound.set(element, room.config.fields[field] === 'text' && isTextInput(element)
         ? bindTextField(room, field, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => (form[field] = value) })
@@ -198,7 +204,12 @@ function connect(element, binding) {
 function bindChoice(room, field, element, form) {
     const events = new AbortController()
     const { signal } = events
-    const unlock = lockWhileEditing(room, field, element)
+    const lock = lockWhileEditing(room, field, element)
+    const unbind = room.bind(field, { reveal: () => element.scrollIntoView({ block: 'center', behavior: 'smooth' }) })
+    const unlock = () => {
+        lock()
+        unbind()
+    }
 
     // After `v-model`'s own listener, so the form already holds the new value.
     element.addEventListener('change', () => room.change(field, form[field]), { signal })
@@ -221,7 +232,7 @@ const presenceProps = {
 const collaborationOf = (props) => {
     const source = props.collaboration ?? props.form?.collaboration ?? {}
 
-    return { room: unref(source.room) ?? null, people: unref(source.people) ?? [], status: unref(source.status) ?? 'connecting' }
+    return { room: unref(source.room) ?? null, people: unref(source.people) ?? [], status: unref(source.status) ?? 'connecting', following: unref(source.following) ?? null }
 }
 
 /** The faces of everybody else in the room: `<Avatars :form="form" />`. */
@@ -232,14 +243,24 @@ export const Avatars = defineComponent({
         addStyles()
 
         return () => {
-            const { room, people } = collaborationOf(props)
+            const { room, people, following } = collaborationOf(props)
             const config = room?.config
             const { shown, more } = avatarsOf(people, props.limit ?? config?.avatarLimit)
 
             return h('div', { class: 'collab-avatars', title: people.length ? undefined : config?.strings?.alone }, [
                 ...shown.map((person) => h(
-                    'span',
-                    { key: person.client, class: 'collab-avatar', title: describe(person, config?.strings, config?.labels), 'data-idle': person.idle || undefined, style: { background: person.color } },
+                    'button',
+                    {
+                        key: person.client,
+                        type: 'button',
+                        class: 'collab-avatar',
+                        title: describe(person, config?.strings, config?.labels),
+                        'data-idle': person.idle || undefined,
+                        'data-following': following === person.client || undefined,
+                        'data-collab-follow': '',
+                        onClick: () => room?.follow(person.client),
+                        style: { background: person.color },
+                    },
                     person.avatar ? [h('img', { src: person.avatar, alt: '', referrerpolicy: 'no-referrer' })] : person.initials,
                 )),
                 more ? h('span', { class: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,

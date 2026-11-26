@@ -362,6 +362,10 @@ Inertia::render('Posts/Create', ['collaboration' => Collaboration::creating(Post
 
 The policy's `create` ability decides who joins. Use the same components as on an edit page: `<Avatars>` shows everybody on the create page, and the form saves as usual, with `Post::create()`.
 
+### Following a colleague
+
+Click somebody's face in the avatars to follow them: the page brings whichever field they are in into view as they move. Click again, or do anything yourself, to stop. In code: `form.collaboration.follow(person.client)`.
+
 ### Who is on each record of a list
 
 Show, in a list or a table, who is on each record right now:

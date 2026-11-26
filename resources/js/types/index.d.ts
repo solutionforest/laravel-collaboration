@@ -62,6 +62,8 @@ export interface FieldBinding {
     capture?(): void
     render?(): void
     cursor?(): Selection | null
+    /** Brings the field into view, for somebody following a colleague. */
+    reveal?(): void
     readonly isBusy?: boolean
 }
 
@@ -73,6 +75,7 @@ export interface RoomEvents {
     saved: { name: string | null }
     expired: Room
     deleted: { name: string | null }
+    following: number | null
 }
 
 /** One record's room in this tab: the shared draft, the people in it, and the sync loop. */
@@ -98,6 +101,10 @@ export class Room {
     peopleIn(field: string): Person[]
     /** Who holds a locked field right now, if somebody else does. */
     lockedBy(field: string): Person | null
+    /** The colleague this page follows from field to field, by client. */
+    readonly following: number | null
+    /** Follow a colleague; again, or null, to stop. */
+    follow(client: number | null): void
     /** Asks the server something about this room, such as `room.call('comments')`. */
     call<T = any>(endpoint: string, payload?: Record<string, unknown>): Promise<T>
     /** What a form sends when it is saved; `Room::save()` reads it. */

@@ -71,6 +71,7 @@ export function bindTextField(room, field, element, { onValueChange, onRemoteCha
         },
         render: show,
         cursor: () => (isFocused() ? selection() : null),
+        reveal: () => element.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     })
 
     const { signal } = events

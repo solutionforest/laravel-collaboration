@@ -66,6 +66,7 @@ export const Collaborative = Extension.create({
                             view.dispatch(transaction.setMeta('addToHistory', false).setMeta(key, 'remote'))
                             applying = false
                         },
+                        reveal: () => view.dom.scrollIntoView({ block: 'center', behavior: 'smooth' }),
                         cursor() {
                             if (!view.hasFocus()) return null
 

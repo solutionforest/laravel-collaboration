@@ -11,6 +11,10 @@ export interface Collaboration {
     status: RoomStatus
     peopleIn(field: string): Person[]
     isLive(field: string): boolean
+    /** The colleague this page follows from field to field. */
+    following: number | null
+    /** Follow a colleague by client; again, or null, to stop. Clicking a face in `<Avatars>` does this. */
+    follow(client: number | null): void
 }
 
 export interface CollaborationOptions {

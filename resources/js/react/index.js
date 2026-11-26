@@ -25,6 +25,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
     const [room, setRoom] = useState(/** @type {Room | null} */ (null))
     const [people, setPeople] = useState(/** @type {Person[]} */ ([]))
     const [status, setStatus] = useState('connecting')
+    const [following, setFollowing] = useState(/** @type {number | null} */ (null))
 
     useEffect(() => {
         if (!config) return
@@ -33,6 +34,7 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
 
         joined.on('people', setPeople)
         joined.on('status', setStatus)
+        joined.on('following', setFollowing)
         joined.on('expired', () => renewRoom(joined, prop))
 
         setRoom(joined)
@@ -54,7 +56,10 @@ export function useCollaboration(config, { prop = 'collaboration' } = {}) {
         status,
         peopleIn: (/** @type {string} */ field) => peopleIn(people, field),
         isLive: (/** @type {string} */ field) => room?.isLiveField(field) ?? false,
-    }), [room, people, status])
+        following,
+        /** Follow a colleague from field to field; again, or null, to stop. */
+        follow: (/** @type {number | null} */ client) => room?.follow(client),
+    }), [room, people, status, following])
 }
 
 /**
@@ -235,12 +240,19 @@ class FieldBinding {
         const room = this.room()
         const element = this.element
 
-        if (this.unbindText || this.unlock || !room || !element) return
+        // A form field outside the room is an ordinary input.
+        if (this.unbindText || this.unlock || !room || !element || !(this.name in room.config.fields || this.name in (room.config.labels ?? {}))) return
 
         if (room.config.fields[this.name] === 'text' && isTextInput(element)) {
             this.unbindText = bindTextField(room, this.name, /** @type {HTMLInputElement} */ (element), { onValueChange: (value) => this.form().setData(this.name, value) })
         } else {
-            this.unlock = lockWhileEditing(room, this.name, element)
+            const unlock = lockWhileEditing(room, this.name, element)
+            const unbind = room.bind(this.name, { reveal: () => element.scrollIntoView({ block: 'center', behavior: 'smooth' }) })
+
+            this.unlock = () => {
+                unlock()
+                unbind()
+            }
         }
     }
 
@@ -292,8 +304,18 @@ export function Avatars({ form, collaboration = form?.collaboration, limit, clas
         'div',
         { className: `collab-avatars ${className}`.trim(), title: collaboration.people.length ? undefined : config?.strings?.alone },
         ...shown.map((person) => createElement(
-            'span',
-            { key: person.client, className: 'collab-avatar', title: describe(person, config?.strings, config?.labels), 'data-idle': person.idle || undefined, style: { background: person.color } },
+            'button',
+            {
+                key: person.client,
+                type: 'button',
+                className: 'collab-avatar',
+                title: describe(person, config?.strings, config?.labels),
+                'data-idle': person.idle || undefined,
+                'data-following': collaboration.following === person.client || undefined,
+                'data-collab-follow': '',
+                onClick: () => collaboration.follow?.(person.client),
+                style: { background: person.color },
+            },
             person.avatar ? createElement('img', { src: person.avatar, alt: '', referrerPolicy: 'no-referrer' }) : person.initials,
         )),
         more ? createElement('span', { key: 'more', className: 'collab-avatar', style: { background: '#6b7280' } }, `+${more}`) : null,

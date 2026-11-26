@@ -9,6 +9,8 @@ const CSS = `
 .collab-avatar:first-child { margin-left: 0; }
 .collab-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .collab-avatar[data-idle] { opacity: .45; }
+button.collab-avatar, .collab-avatar[role=button] { padding: 0; cursor: pointer; }
+.collab-avatar[data-following] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; color: #4f46e5; }
 .collab-field-people { display: inline-flex; gap: 4px; }
 .collab-field-person { padding: 1px 6px; border-radius: 9999px; color: #fff; font: 600 11px/1.5 system-ui, sans-serif; }
 .collab-conflicts { display: grid; gap: 8px; }
