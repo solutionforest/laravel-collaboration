@@ -32,8 +32,8 @@ const packages = [
                 <p class="home-family-stack">{{ item.stack }}</p>
                 <h3>{{ item.name }} <span v-if="item.key === current" class="home-family-here">You are here</span></h3>
                 <p>{{ item.text }}</p>
-                <div class="home-family-links">
-                    <a v-if="item.key !== current" :href="item.site">Documentation →</a>
+                <div class="home-family-links vp-raw">
+                    <a v-if="item.key !== current" :href="item.site" target="_self">Documentation →</a>
                     <a :href="item.repo">GitHub →</a>
                 </div>
             </div>

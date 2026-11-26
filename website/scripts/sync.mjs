@@ -68,6 +68,22 @@ const pages = [
         body: `## Requirements\n${part('Requirements')}\n## Installation\n${part('Installation')}\n${promoted('Quick start')}`,
     },
     {
+        path: 'guide/first-page.md',
+        source: 'docs/first-page.md',
+        keepNumbers: true,
+        title: 'Your first collaborative page',
+        description: 'Build a complete collaborative edit page step by step, in Livewire, Inertia + React, or Inertia + Vue.',
+        body: read('docs/first-page.md').replace(/^# .*\n/, ''),
+    },
+    {
+        path: 'guide/custom-components.md',
+        source: 'docs/custom-components.md',
+        keepNumbers: true,
+        title: 'Make your own component live',
+        description: 'Connect your own inputs, custom pickers, text widgets, TipTap toolbars, and third-party editors to the shared draft.',
+        body: read('docs/custom-components.md').replace(/^# .*\n/, ''),
+    },
+    {
         path: 'guide/rich-text.md',
         source: 'README.md',
         title: 'Rich text',
@@ -152,6 +168,13 @@ const pages = [
         body: part('Troubleshooting'),
     },
     {
+        path: 'guide/ai-assistants.md',
+        source: 'README.md',
+        title: 'AI assistants and skills',
+        description: 'Install the Laravel Collaboration skill for Claude Code, Cursor, Codex, Antigravity, or Laravel Boost.',
+        body: promoted('With an AI assistant'),
+    },
+    {
         path: 'demo-and-tests.md',
         source: 'README.md',
         title: 'Demo and tests',
@@ -189,6 +212,7 @@ const sectionPages = {
     'Building an integration': '/integrations',
     'How it works': '/how-it-works',
     'Troubleshooting': '/guide/troubleshooting',
+    'With an AI assistant': '/guide/ai-assistants',
     'Run the demo': '/demo-and-tests#run-the-demo',
     'Testing': '/demo-and-tests#testing',
     'Compared with filament-collaboration': '/comparison',
@@ -197,6 +221,8 @@ const sectionPages = {
 for (const [heading, url] of Object.entries(sectionPages)) anchors.set(slugify(heading), url)
 
 const files = {
+    'docs/first-page.md': (anchor) => '/guide/first-page' + (anchor ? `#${anchor}` : ''),
+    'docs/custom-components.md': (anchor) => '/guide/custom-components' + (anchor ? `#${anchor}` : ''),
     'CHANGELOG.md': () => '/changelog',
     'README.md': (anchor) => anchors.get(anchor) ?? '/',
     'LICENSE': () => 'https://github.com/solutionforest/laravel-collaboration/blob/main/LICENSE',
@@ -313,11 +339,13 @@ for (const page of pages) {
             return sized.replace(/(!?\[[^\]]*\])\(([^)\s]+)\)/g, (_, text, target) => `${text}(${link(target, page.source)})`)
         })
         .join('\n')
-        // Section numbers belong to the single guide file, not to separate pages.
-        .replace(/^(#{2,4}) \d+\. /gm, '$1 ')
+        // Section numbers belong to the single guide file, not to separate pages (unless kept for step-by-step guides).
+        .replace(/^(#{2,4}) \d+\. /gm, (match, hashes) => (page.keepNumbers ? match : `${hashes} `))
         // A guide section's subsections are the page's sections: ### becomes ##, under the page's title.
         .replace(/^#(#{2,5}) /gm, (heading, rest) => (page.promote ? `${rest} ` : heading))
-    const front = ['---', `title: ${JSON.stringify(page.title)}`, `description: ${JSON.stringify(page.description)}`, `source: ${page.source}`, `cover: /covers/${page.path.replace(/(\/index)?\.md$/, '').replace(/\//g, '-')}.png`, '---', '']
+    const coverSlug = page.path.replace(/(\/index)?\.md$/, '').replace(/\//g, '-')
+    const cover = existsSync(path.join(site, 'public/covers', `${coverSlug}.png`)) ? `/covers/${coverSlug}.png` : '/covers/default.png'
+    const front = ['---', `title: ${JSON.stringify(page.title)}`, `description: ${JSON.stringify(page.description)}`, `source: ${page.source}`, `cover: ${cover}`, '---', '']
     const file = path.join(out, page.path)
 
     mkdirSync(path.dirname(file), { recursive: true })

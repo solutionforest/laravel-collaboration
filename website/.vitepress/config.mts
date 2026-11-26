@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig, type HeadConfig } from 'vitepress'
 import { slugify } from './slugify.mjs'
 
@@ -8,6 +9,8 @@ const name = 'Laravel Collaboration'
 const tagline = 'Google Docs-style collaboration for any Laravel app'
 const description =
     'Live fields, presence, carets, comments and version history for Livewire and Inertia (React and Vue) apps. Everyone on a record edits the same draft as they type, with its own CRDT, over plain HTTP or Laravel Reverb.'
+const changelog = readFileSync(new URL('../../CHANGELOG.md', import.meta.url), 'utf8')
+const latestVersion = changelog.match(/^## \[(\d+\.\d+\.\d+)\]/m)?.[1]
 
 /** The page's address on the site, from its file. */
 const urlOf = (relativePath: string) => site + relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
@@ -106,7 +109,7 @@ export default defineConfig({
                 ],
             },
             {
-                text: 'v0.2.2',
+                text: latestVersion ? `v${latestVersion}` : 'Versions',
                 items: [
                     { text: 'Changelog', link: '/changelog' },
                     { text: 'Releases', link: `${repo}/releases` },
@@ -119,6 +122,7 @@ export default defineConfig({
                 text: 'Getting started',
                 items: [
                     { text: 'Install and quick start', link: '/getting-started' },
+                    { text: 'Your first collaborative page', link: '/guide/first-page' },
                     { text: 'Compared with filament-collaboration', link: '/comparison' },
                 ],
             },
@@ -126,6 +130,7 @@ export default defineConfig({
                 text: 'Usage guide',
                 items: [
                     { text: 'Describing a room', link: '/guide/rooms' },
+                    { text: 'Make your own component live', link: '/guide/custom-components' },
                     { text: 'Rich text', link: '/guide/rich-text' },
                     { text: 'Repeaters', link: '/guide/repeaters' },
                     { text: 'Saving', link: '/guide/saving' },
@@ -138,6 +143,7 @@ export default defineConfig({
             {
                 text: 'Reference',
                 items: [
+                    { text: 'AI assistants and skills', link: '/guide/ai-assistants' },
                     { text: 'Building an integration', link: '/integrations' },
                     { text: 'How it works', link: '/how-it-works' },
                     { text: 'Troubleshooting', link: '/guide/troubleshooting' },
